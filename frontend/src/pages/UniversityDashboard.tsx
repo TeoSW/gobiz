@@ -215,12 +215,12 @@ export default function UniversityDashboard() {
           title="Most requested skills"
           sub="Number of opportunities that list the skill"
           chart={
-            <div className="h-80">
+            <div className="h-96">
               <ResponsiveContainer>
                 <BarChart data={top} layout="vertical" margin={{ left: 8, right: 16 }} barCategoryGap={4}>
                   <CartesianGrid horizontal={false} stroke="var(--grid)" />
                   <XAxis type="number" allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="name" width={150} tick={axisTick} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" interval={0} width={150} tick={axisTick} axisLine={false} tickLine={false} />
                   <Tooltip cursor={{ fill: "var(--muted)" }} content={<ChartTooltip />} />
                   <Bar dataKey="Opportunities" fill="var(--series-1)" radius={[0, 4, 4, 0]} maxBarSize={18} />
                 </BarChart>
@@ -234,12 +234,12 @@ export default function UniversityDashboard() {
           title="Skill gap"
           sub="How often companies ask for a skill, compared to how many students have it"
           chart={
-            <div className="h-80">
+            <div className="h-96">
               <ResponsiveContainer>
                 <BarChart data={gap} layout="vertical" margin={{ left: 8, right: 16 }} barGap={2} barCategoryGap={8}>
                   <CartesianGrid horizontal={false} stroke="var(--grid)" />
                   <XAxis type="number" unit="%" tick={axisTick} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="name" width={150} tick={axisTick} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" interval={0} width={150} tick={axisTick} axisLine={false} tickLine={false} />
                   <Tooltip cursor={{ fill: "var(--muted)" }} content={<ChartTooltip unit="%" />} />
                   <Legend wrapperStyle={{ fontSize: 12, color: "var(--muted-fg)" }} />
                   <Bar dataKey="Demand (% of opportunities)" fill="var(--series-1)" radius={[0, 4, 4, 0]} maxBarSize={10} />
@@ -265,7 +265,7 @@ export default function UniversityDashboard() {
                 <BarChart data={d.domains.map((x) => ({ name: cap(x.domain), Opportunities: x.count }))} layout="vertical" margin={{ left: 8, right: 16 }} barCategoryGap={4}>
                   <CartesianGrid horizontal={false} stroke="var(--grid)" />
                   <XAxis type="number" allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="name" width={110} tick={axisTick} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" interval={0} width={110} tick={axisTick} axisLine={false} tickLine={false} />
                   <Tooltip cursor={{ fill: "var(--muted)" }} content={<ChartTooltip />} />
                   <Bar dataKey="Opportunities" fill="var(--series-1)" radius={[0, 4, 4, 0]} maxBarSize={18} />
                 </BarChart>

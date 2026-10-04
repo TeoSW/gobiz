@@ -10,6 +10,12 @@ Company describes a problem -> LLM extracts tasks + skills -> company confirms
  -> selection -> work -> delivery -> payment (simulated) -> mutual reviews -> verified portfolio
 ```
 
+## Presentation
+
+- [Slides (PDF, 15 pages)](docs/presentation/GoBiz-presentation.pdf)
+- [Demo video (1:45, WebM)](docs/presentation/GoBiz-demo.webm): student, company with the local AI, professor
+- Both are generated from the running app by [docs/presentation/make_presentation.py](docs/presentation/make_presentation.py) (Playwright, open source)
+
 ## Contents
 
 1. [Features](#features)

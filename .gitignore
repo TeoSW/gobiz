@@ -17,3 +17,4 @@ frontend/dist/
 backend/.env
 .DS_Store
 backend/static/
+docs/presentation/_video_tmp/

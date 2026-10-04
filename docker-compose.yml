@@ -1,0 +1,114 @@
+# GoBiz - full local stack (all components open source).
+#   docker compose up --build                       -> app on http://localhost:8080
+#   docker compose --profile graph up --build       -> + Neo4j knowledge graph (http://localhost:7474)
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up   -> Ollama on the NVIDIA GPU
+
+name: gobiz
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: gobiz
+      MYSQL_USER: gobiz
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-gobiz}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-gobiz-root}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    ports:
+      - "3307:3306"   # 3307 on the host to avoid clashing with a local MySQL
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-gobiz-root}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: 30m          # keep the model loaded between requests
+      OLLAMA_NUM_PARALLEL: "1"        # 4 GB VRAM: one request at a time
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # one-shot: downloads the model into the ollama volume (first run only, ~1.4 GB)
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-qwen3:1.7b}"]
+    restart: "no"
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: mysql+pymysql://gobiz:${MYSQL_PASSWORD:-gobiz}@mysql:3306/gobiz?charset=utf8mb4
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:1.7b}
+      EMBEDDINGS_BACKEND: ${EMBEDDINGS_BACKEND:-sentence-transformers}
+      NEO4J_URI: ${NEO4J_URI:-}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-gobiz-graph}
+      CORS_ORIGINS: http://localhost:8080,http://localhost:5173
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - "8000:8000"
+    volumes:
+      - hf_models:/models        # embedding model cache (downloaded once, ~470 MB)
+      - uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+      neo4j:
+        condition: service_healthy
+        required: false          # only when started with --profile graph
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+  neo4j:
+    image: neo4j:5.26-community   # 5.26 LTS
+    profiles: ["graph"]
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-gobiz-graph}
+      NEO4J_server_memory_heap_max__size: 1G   # fits next to everything else in 16 GB RAM
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p ${NEO4J_PASSWORD:-gobiz-graph} 'RETURN 1' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+volumes:
+  mysql_data:
+  ollama_data:
+  hf_models:
+  uploads:
+  neo4j_data:

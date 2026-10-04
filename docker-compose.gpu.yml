@@ -1,0 +1,12 @@
+# Optional override: run Ollama on an NVIDIA GPU (e.g. GTX 1050 Ti, 4 GB VRAM).
+# Requires Docker Desktop with the WSL2 backend (Windows) or the NVIDIA Container Toolkit (Linux).
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

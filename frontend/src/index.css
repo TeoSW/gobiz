@@ -1,0 +1,170 @@
+@import "tailwindcss";
+@import "@fontsource-variable/plus-jakarta-sans";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Design tokens - design-system/gobiz/MASTER.md (trust blue + orange CTA). AA contrast checked for text pairs. */
+:root {
+  --bg: #f8fafc;
+  --fg: #0f172a;
+  --card: #ffffff;
+  --muted: #eef2f7;
+  --muted-fg: #475569;
+  --border: #e2e8f0;
+  --primary: #2563eb;
+  --primary-fg: #ffffff;
+  --primary-soft: #dbeafe;
+  --primary-strong: #1d4ed8;
+  --accent: #c2410c;
+  --accent-fg: #ffffff;
+  --accent-soft: #ffedd5;
+  --success: #15803d;
+  --success-soft: #dcfce7;
+  --warning: #b45309;
+  --warning-soft: #fef3c7;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+  --ring: #2563eb;
+  --glass: rgb(255 255 255 / 0.72);
+  --shadow: 0 1px 2px rgb(15 23 42 / 0.06), 0 4px 16px rgb(15 23 42 / 0.05);
+  /* chart series (dataviz reference palette, validated light: CVD dE 24.7, contrast >= 3:1) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --grid: #e8edf3;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0b1120;
+  --fg: #e5e7eb;
+  --card: #111a2e;
+  --muted: #1b2540;
+  --muted-fg: #a3aec2;
+  --border: #26324d;
+  --primary: #2563eb;
+  --primary-fg: #ffffff;
+  --primary-soft: #172554;
+  --primary-strong: #93c5fd;
+  --accent: #fb923c;
+  --accent-fg: #1c0a00;
+  --accent-soft: #431407;
+  --success: #4ade80;
+  --success-soft: #052e16;
+  --warning: #fbbf24;
+  --warning-soft: #422006;
+  --danger: #f87171;
+  --danger-soft: #450a0a;
+  --ring: #60a5fa;
+  --glass: rgb(11 17 32 / 0.72);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.25);
+  /* dark steps validated against #111a2e: CVD dE 26.8, contrast >= 3:1 */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --grid: #1f2a44;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-fg: var(--muted-fg);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-strong: var(--primary-strong);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --shadow-card: var(--shadow);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  @apply bg-bg font-sans text-fg antialiased;
+  font-size: 16px;
+  line-height: 1.55;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+h1, h2, h3 {
+  text-wrap: balance;
+  letter-spacing: -0.015em;
+}
+
+@utility card {
+  @apply rounded-2xl border border-border bg-card shadow-card;
+}
+@utility glass {
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+}
+@utility btn {
+  @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply btn bg-primary text-primary-fg hover:bg-[#1d4ed8];
+}
+@utility btn-accent {
+  @apply btn bg-accent text-accent-fg hover:brightness-110;
+}
+@utility btn-outline {
+  @apply btn border border-border bg-card text-fg hover:bg-muted;
+}
+@utility btn-ghost {
+  @apply btn text-muted-fg hover:bg-muted hover:text-fg;
+}
+@utility btn-danger {
+  @apply btn border border-border bg-card text-danger hover:bg-danger-soft;
+}
+@utility input {
+  @apply min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-fg transition-colors placeholder:text-muted-fg focus:border-primary focus:outline-none;
+  &:is(textarea) {
+    @apply py-2.5 leading-relaxed;
+  }
+}
+@utility label {
+  @apply mb-1.5 block text-sm font-medium text-fg;
+}
+@utility hint {
+  @apply mt-1 text-xs text-muted-fg;
+}
+@utility chip {
+  @apply inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium whitespace-nowrap text-fg;
+}
+@utility link {
+  @apply font-medium text-primary-strong underline-offset-4 hover:underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-in {
+  animation: fade-up 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}

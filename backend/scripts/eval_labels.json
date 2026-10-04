@@ -1,0 +1,20 @@
+{
+  "pbi": ["andrei", "sorin"],
+  "dbclean": ["sorin", "mihai", "teodor"],
+  "autoreport": ["cristian", "larisa"],
+  "survey": ["ioana", "bianca", "daria"],
+  "landing": ["radu"],
+  "noshow": ["vlad", "mihai", "ioana"],
+  "scrape": ["mihai", "larisa"],
+  "forecast": ["ioana", "daria"],
+  "feedback": ["vlad"],
+  "mkt": ["bianca"],
+  "intern_da": ["elena", "andrei", "ana", "larisa"],
+  "intern_fin": ["ana"],
+  "intern_mkt": ["bianca", "maria"],
+  "intern_ops": ["maria"],
+  "job_fe": ["radu"],
+  "job_da": ["sorin", "andrei"],
+  "job_py": ["mihai", "cristian"],
+  "job_java": ["teodor"]
+}

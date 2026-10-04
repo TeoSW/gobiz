@@ -123,3 +123,14 @@ def test_graph_sync_is_a_silent_noop_without_neo4j(client, caplog):
         assert graph.sync_all(db) is False
     assert "Neo4j sync failed" not in caplog.text
     assert graph.co_demand(SessionLocal(), 3)["source"] == "sql"
+
+
+def test_single_container_serves_frontend_and_api(client):
+    assert "GoBiz" in client.get("/").text
+    assert "GoBiz" in client.get("/university").text  # client-side route -> index.html
+    assert client.get("/assets/app.js").text == "console.log('gobiz')"
+    assert client.get("/favicon.svg").text == "<svg/>"
+    assert client.get("/api/does-not-exist").status_code == 404
+    assert client.get("/api/health").json() == {"ok": True}
+    assert client.get("/openapi.json").status_code == 200
+    assert "BACKEND_DIR" not in client.get("/..%2F..%2Fbackend%2Fapp%2Fconfig.py").text  # no path traversal

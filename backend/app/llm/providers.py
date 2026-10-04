@@ -3,6 +3,8 @@
 import json
 import logging
 import re
+import threading
+import time
 import unicodedata
 from typing import Protocol
 
@@ -13,6 +15,10 @@ from ..skills_catalog import find_skill_mentions
 from .schema import EXTRACTION_JSON_SCHEMA, SYSTEM_PROMPT, Extraction, ExtractedSkill, SuggestedSkill
 
 log = logging.getLogger(__name__)
+
+
+# state of the startup model download (shown on the System status page)
+pull_state: dict = {"state": "idle", "error": None}
 
 
 class LLMProvider(Protocol):
@@ -41,6 +47,11 @@ class OllamaProvider:
             return {"reachable": True, "model": self.model, "model_pulled": pulled, "models": models}
         except Exception as exc:  # noqa: BLE001
             return {"reachable": False, "model": self.model, "model_pulled": False, "error": str(exc)[:200]}
+
+    def pull(self) -> None:
+        """Blocking download of the model into Ollama's volume (~1.4 GB for qwen3:1.7b)."""
+        r = httpx.post(f"{self.url}/api/pull", json={"model": self.model, "stream": False}, timeout=None)
+        r.raise_for_status()
 
     def extract(self, title: str, description: str, type_hint: str | None) -> Extraction:
         user = f"Title: {title}\nType selected by the company: {type_hint or 'unknown'}\n\nDescription:\n{description}"
@@ -167,6 +178,38 @@ class HeuristicProvider:
 def _strip(s: str) -> str:
     s = unicodedata.normalize("NFKD", s.lower())
     return "".join(ch for ch in s if not unicodedata.combining(ch))
+
+
+def _pull_worker(provider: OllamaProvider) -> None:
+    for _ in range(36):  # the Ollama container may still be starting: wait up to ~3 minutes
+        status = provider.status()
+        if status["reachable"]:
+            break
+        time.sleep(5)
+    else:
+        pull_state.update(state="unreachable")
+        return
+    if status["model_pulled"]:
+        pull_state.update(state="ready")
+        return
+    pull_state.update(state="pulling")
+    log.info("Downloading %s into Ollama (first start only)...", provider.model)
+    try:
+        provider.pull()
+        pull_state.update(state="ready")
+        log.info("Model %s ready", provider.model)
+    except Exception as exc:  # noqa: BLE001 - extraction keeps working with the rule-based fallback
+        pull_state.update(state="failed", error=str(exc)[:200])
+        log.warning("Model download failed: %s", exc)
+
+
+def ensure_model_pulled() -> None:
+    """On startup, download the configured model in the background if Ollama does not have it yet."""
+    s = get_settings()
+    if s.llm_provider != "ollama" or not s.ollama_auto_pull:
+        return
+    provider = OllamaProvider(s.ollama_url, s.ollama_model, s.ollama_timeout_s, s.ollama_num_ctx)
+    threading.Thread(target=_pull_worker, args=(provider,), daemon=True, name="ollama-pull").start()
 
 
 def get_provider() -> LLMProvider:

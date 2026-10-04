@@ -1,13 +1,44 @@
-# GoBiz - full local stack (all components open source).
-#   docker compose up --build                       -> app on http://localhost:8080
+# GoBiz - full local stack (all components open source). In Docker Desktop it appears as one project: "gobiz".
+#   docker compose up --build                       -> app on http://localhost:8080 (API docs: /docs)
 #   docker compose --profile graph up --build       -> + Neo4j knowledge graph (http://localhost:7474)
 #   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up   -> Ollama on the NVIDIA GPU
+#
+# 3 containers: gobiz-app (React UI + FastAPI), gobiz-mysql (data), gobiz-ollama (local LLM).
+# The 4th, gobiz-neo4j, starts only with --profile graph.
 
 name: gobiz
 
 services:
+  app:
+    build: .
+    container_name: gobiz-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: mysql+pymysql://gobiz:${MYSQL_PASSWORD:-gobiz}@mysql:3306/gobiz?charset=utf8mb4
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:1.7b}   # downloaded automatically on first start (~1.4 GB)
+      EMBEDDINGS_BACKEND: ${EMBEDDINGS_BACKEND:-sentence-transformers}
+      NEO4J_URI: ${NEO4J_URI:-}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-gobiz-graph}
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - "8080:8000"
+    volumes:
+      - hf_models:/models        # embedding model cache (downloaded once, ~470 MB)
+      - uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+      neo4j:
+        condition: service_healthy
+        required: false          # only when started with --profile graph
+
   mysql:
     image: mysql:8.4
+    container_name: gobiz-mysql
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: gobiz
@@ -27,6 +58,7 @@ services:
 
   ollama:
     image: ollama/ollama:latest
+    container_name: gobiz-ollama
     restart: unless-stopped
     environment:
       OLLAMA_KEEP_ALIVE: 30m          # keep the model loaded between requests
@@ -36,60 +68,10 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-
-  # one-shot: downloads the model into the ollama volume (first run only, ~1.4 GB)
-  ollama-pull:
-    image: ollama/ollama:latest
-    depends_on:
-      ollama:
-        condition: service_healthy
-    environment:
-      OLLAMA_HOST: http://ollama:11434
-    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-qwen3:1.7b}"]
-    restart: "no"
-
-  backend:
-    build: ./backend
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: mysql+pymysql://gobiz:${MYSQL_PASSWORD:-gobiz}@mysql:3306/gobiz?charset=utf8mb4
-      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
-      OLLAMA_URL: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:1.7b}
-      EMBEDDINGS_BACKEND: ${EMBEDDINGS_BACKEND:-sentence-transformers}
-      NEO4J_URI: ${NEO4J_URI:-}
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-gobiz-graph}
-      CORS_ORIGINS: http://localhost:8080,http://localhost:5173
-      UPLOAD_DIR: /app/uploads
-    ports:
-      - "8000:8000"
-    volumes:
-      - hf_models:/models        # embedding model cache (downloaded once, ~470 MB)
-      - uploads:/app/uploads
-    depends_on:
-      mysql:
-        condition: service_healthy
-      ollama:
-        condition: service_started
-      neo4j:
-        condition: service_healthy
-        required: false          # only when started with --profile graph
-
-  frontend:
-    build: ./frontend
-    restart: unless-stopped
-    ports:
-      - "8080:80"
-    depends_on:
-      - backend
 
   neo4j:
     image: neo4j:5.26-community   # 5.26 LTS
+    container_name: gobiz-neo4j
     profiles: ["graph"]
     restart: unless-stopped
     environment:

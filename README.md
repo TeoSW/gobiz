@@ -105,9 +105,8 @@ All components are **open source** and free. No paid services, no accounts, no e
 
 | Technology | License | Role |
 |---|---|---|
-| Docker Engine + Docker Compose | Apache-2.0 | orchestration (MySQL, Ollama, backend, frontend, Neo4j) |
-| nginx | 1.27, BSD-2 | serves the built frontend and proxies `/api` to the backend |
-| Node.js | 20, MIT | frontend build |
+| Docker Engine + Docker Compose | Apache-2.0 | orchestration: one project "gobiz" with 3 containers (+ Neo4j on demand) |
+| Node.js | 20, MIT | frontend build (only inside the image build stage) |
 
 > Note: **Docker Desktop** (the Windows app) is proprietary software, free for personal use, education and small businesses. The `docker-compose.yml` file works unchanged with open-source alternatives: **Podman Desktop** (Apache-2.0) or **Rancher Desktop** (Apache-2.0), or Docker Engine installed directly in WSL2.
 
@@ -118,21 +117,29 @@ The design system was generated with the ui-ux-pro-max skill and saved in [desig
 ## Architecture
 
 ```
-                         ┌──────────────────────────────┐
-  browser  ───────────▶  │ frontend (nginx :8080)       │   React SPA
-                         │   /api/* ──proxy──┐          │
-                         └───────────────────┼──────────┘
-                                             ▼
-                         ┌──────────────────────────────┐
-                         │ backend FastAPI (:8000)      │
-                         │  routers  -> services        │
-                         │  llm/        extraction      │──▶ Ollama (:11434) qwen3:1.7b
-                         │  matching/   engine + embed. │──▶ sentence-transformers (local)
-                         │  graph.py    optional        │──▶ Neo4j (:7687)  [profile graph]
-                         └──────────────┬───────────────┘
-                                        ▼
-                                  MySQL 8.4 (:3307 on host)
+  Docker project "gobiz"
+  ┌──────────────────────────────────────────────┐
+  │ gobiz-app  (:8080)                           │
+  │   React UI (built)  +  FastAPI /api, /docs   │
+  │   llm/       extraction ──────────────────────┼──▶ gobiz-ollama (:11434)  qwen3:1.7b on the GPU
+  │   matching/  engine + embeddings (in-proc)   │
+  │   graph.py   optional ────────────────────────┼──▶ gobiz-neo4j (:7474/:7687)  only with --profile graph
+  └──────────────────────┬───────────────────────┘
+                         ▼
+                 gobiz-mysql (:3307 on host)
 ```
+
+### Why 3 containers and not 1
+
+The app (UI + API) is already a single container: the Dockerfile builds React with Node and copies the result into the Python image, which serves both. MySQL and Ollama stay separate on purpose:
+
+- they are official images, updated by their maintainers; folding them into one image means maintaining a database server and an LLM runtime by hand;
+- only Ollama needs the GPU; the GPU override applies to that container alone;
+- a code change rebuilds only `gobiz-app` (seconds to minutes), not the 9 GB Ollama image or the database;
+- data and models live in their own volumes (`mysql_data`, `ollama_data`, `hf_models`), so containers can be recreated without losing anything;
+- one process per container keeps health checks, restarts and logs separate.
+
+In Docker Desktop all of them appear grouped under the **gobiz** project, with readable names (`gobiz-app`, `gobiz-mysql`, `gobiz-ollama`, `gobiz-neo4j`). `docker compose down` stops the whole project at once.
 
 Every AI component has a deterministic fallback, so the application works even when one of them is missing:
 
@@ -220,8 +227,8 @@ cp .env.example .env
 docker compose up --build
 ```
 
-- App: **http://localhost:8080** · API docs (Swagger): http://localhost:8000/docs
-- On first start, `ollama-pull` downloads `qwen3:1.7b` (~1.4 GB) and the backend downloads the embedding model (~470 MB) into a volume. Until they are ready the application works on the fallbacks; check the **System & AI status** page.
+- App: **http://localhost:8080** · API docs (Swagger): http://localhost:8080/docs
+- On first start the app asks Ollama to download `qwen3:1.7b` (~1.4 GB) and downloads the embedding model (~470 MB) into a volume. Until they are ready the application works on the fallbacks; check the **System & AI status** page.
 
 **With the GPU (GTX 1050 Ti):** needs a recent NVIDIA driver on Windows (WSL2 support is included).
 
@@ -294,7 +301,8 @@ Semantic similarity alone ranks worse than the skill rules, which supports givin
 
 ```
 GoBiz/
-├─ docker-compose.yml          MySQL, Ollama (+ model pull), backend, frontend, Neo4j (profile "graph")
+├─ Dockerfile                  one image: builds React, then runs FastAPI serving UI + API
+├─ docker-compose.yml          project "gobiz": app, MySQL, Ollama, Neo4j (profile "graph")
 ├─ docker-compose.gpu.yml      override: Ollama on an NVIDIA GPU
 ├─ .env.example
 ├─ design-system/gobiz/        design system (ui-ux-pro-max)
@@ -317,12 +325,11 @@ GoBiz/
    ├─ src/pages/               Home, Explore, OpportunityDetail, Student*, Company*, PostOpportunity,
    │                            Talent, Messages, UniversityDashboard, SystemStatus, About
    ├─ src/components/          Layout, Match (score + breakdown), OpportunityCard, Chat, Pipeline, ui
-   └─ nginx.conf
 ```
 
 ## API
 
-Full interactive documentation: http://localhost:8000/docs. The prototype identifies the user through the `X-User-Id` header (the persona selector).
+Full interactive documentation: http://localhost:8080/docs (Docker) or http://localhost:8000/docs (local development). The prototype identifies the user through the `X-User-Id` header (the persona selector).
 
 | Method | Route | Who |
 |---|---|---|

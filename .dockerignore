@@ -1,0 +1,16 @@
+.git
+.claude
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+backend/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+backend/gobiz.db
+backend/smoke.db
+backend/uploads
+backend/static
+**/.env
+design-system
+docs

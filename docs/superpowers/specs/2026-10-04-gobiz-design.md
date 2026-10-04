@@ -35,7 +35,7 @@ and invite anyone. "Apply" + "Invite" + "AI Match" coexist.
 
 ```
 frontend  React 18 + Vite + TypeScript + Tailwind v4 + React Router + TanStack Query + Recharts + lucide-react
-   │  /api (nginx proxy in Docker, Vite proxy in dev)
+   │  same origin in Docker (FastAPI serves the built UI), Vite proxy in dev
 backend   FastAPI + SQLAlchemy 2 + Pydantic v2 (Python 3.12)
    ├── MySQL 8.4 (system of record; SQLite fallback for local dev/tests)
    ├── Ollama  → qwen3:1.7b default (Apache-2.0, ~1.4 GB, fully on a 4 GB GPU); qwen3:4b optional: requirement extraction

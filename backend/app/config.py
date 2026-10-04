@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     seed_demo_data: bool = True
     upload_dir: str = str(BACKEND_DIR / "uploads")
     cors_origins: str = "http://localhost:5173,http://localhost:8080"
+    # Built React app (frontend/dist). In Docker it is copied here and served by FastAPI itself (no nginx container).
+    static_dir: str = str(BACKEND_DIR / "static")
 
     # --- LLM (requirement extraction) -------------------------------------------------
     # "ollama" (default, falls back to heuristic automatically) or "heuristic".
@@ -28,6 +30,8 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen3:1.7b"
     ollama_timeout_s: float = 120.0
     ollama_num_ctx: int = 3072  # prompt ~450 tokens + answer <= 900
+    # download the model through the Ollama API on startup if missing (replaces a separate "pull" container)
+    ollama_auto_pull: bool = True
 
     # --- Embeddings ---------------------------------------------------------------------
     # "sentence-transformers" (falls back to hashing while loading / if unavailable) or "hashing".

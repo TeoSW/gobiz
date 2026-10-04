@@ -5,7 +5,7 @@ from .. import graph
 from ..config import get_settings
 from ..db import get_db
 from ..deps import current_user
-from ..llm.providers import OllamaProvider
+from ..llm.providers import OllamaProvider, pull_state
 from ..matching.embeddings import embedder
 from ..models import STUDENT_GOALS, InteractionEvent, User
 from ..serializers import user_brief
@@ -25,6 +25,7 @@ def system_status(db: Session = Depends(get_db)):
     llm = {"provider": s.llm_provider, "fallback": "heuristic"}
     if s.llm_provider == "ollama":
         llm |= OllamaProvider(s.ollama_url, s.ollama_model, 3, s.ollama_num_ctx).status()
+        llm["download"] = pull_state["state"]
     db_kind = s.database_url.split(":", 1)[0]
     return {
         "database": {"driver": db_kind, "users": db.query(User).count(),

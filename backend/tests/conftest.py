@@ -11,7 +11,13 @@ os.environ.update(
     LLM_PROVIDER="heuristic",
     NEO4J_URI="",
     UPLOAD_DIR=str(_tmp / "uploads"),
+    STATIC_DIR=str(_tmp / "static"),
 )
+# a fake built frontend, so the single-container static serving is tested too
+(_tmp / "static" / "assets").mkdir(parents=True)
+(_tmp / "static" / "index.html").write_text("<!doctype html><title>GoBiz</title>", encoding="utf-8")
+(_tmp / "static" / "assets" / "app.js").write_text("console.log('gobiz')", encoding="utf-8")
+(_tmp / "static" / "favicon.svg").write_text("<svg/>", encoding="utf-8")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest  # noqa: E402

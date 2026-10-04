@@ -94,3 +94,23 @@ def test_hybrid_merge_fixes_small_model_misses():
     assert by_id["sql"]["mandatory"] is False
     assert by_id["excel"]["source"] == "explicit"
     assert out["tasks"] == ["Build the dashboard"]
+
+
+def test_startup_pull_downloads_missing_model_once():
+    from app.llm import providers
+
+    class FakeOllama:
+        model = "qwen3:1.7b"
+        pulls = 0
+
+        def status(self):
+            return {"reachable": True, "model_pulled": self.pulls > 0}
+
+        def pull(self):
+            self.pulls += 1
+
+    fake = FakeOllama()
+    providers._pull_worker(fake)
+    assert fake.pulls == 1 and providers.pull_state["state"] == "ready"
+    providers._pull_worker(fake)  # already present -> no second download
+    assert fake.pulls == 1

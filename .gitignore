@@ -16,3 +16,4 @@ frontend/dist/
 .env
 backend/.env
 .DS_Store
+backend/static/

@@ -163,7 +163,7 @@ export default function PostOpportunity() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
         <h1 className="text-3xl font-extrabold">Post an opportunity</h1>
-        <p className="mt-1 text-muted-fg">Describe the problem in your own words (Romanian or English). A local open-source LLM proposes tasks and skills; you stay in control.</p>
+        <p className="mt-1 max-w-2xl text-muted-fg">Write what you need in your own words, in Romanian or English. AI turns it into tasks and skills, and you check them.</p>
       </div>
       <Stepper step={step} />
 
@@ -176,7 +176,7 @@ export default function PostOpportunity() {
           <Field label="Title" htmlFor="title">
             <input id="title" className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Sales dashboard for our 14 stores" />
           </Field>
-          <Field label="Describe the problem, what you need done and what you expect" htmlFor="desc" hint="Mention tools you use, what is required vs. nice to have, data access, budget and deadline. The more concrete, the better the matching.">
+          <Field label="What do you need?" htmlFor="desc" hint="Say what must be done, which tools are required, the budget and the deadline.">
             <textarea id="desc" className="input" rows={8} value={description} onChange={(e) => setDescription(e.target.value)} />
           </Field>
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -197,8 +197,7 @@ export default function PostOpportunity() {
           </div>
           {extract.isPending && (
             <Notice>
-              The local model (Ollama) is reading your description. With qwen3:1.7b on a GTX 1050 Ti this takes ~10-15 s. If Ollama is not running, the
-              rule-based extractor answers in a few seconds.
+              AI is reading your text. This takes about 10-15 seconds.
             </Notice>
           )}
           <ErrorBox error={extract.error} />
@@ -248,7 +247,7 @@ export default function PostOpportunity() {
 
           <div className="card p-6">
             <h2 className="text-lg font-bold">Skills</h2>
-            <p className="text-sm text-muted-fg">Mark what the student must know from day one, and what they can learn with your guidance. This decides hard filters in matching.</p>
+            <p className="text-muted-fg">Mark what the student must already know, and what they can learn with your help.</p>
             <ul className="mt-2 divide-y divide-border">
               {reqs.map((r) => (
                 <RequirementRow

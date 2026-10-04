@@ -27,6 +27,9 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(120))
     email: Mapped[str] = mapped_column(String(160), unique=True)
     headline: Mapped[str] = mapped_column(String(200), default="")
+    # demo login (mockup): only the test accounts have credentials; other users exist as data only
+    username: Mapped[str | None] = mapped_column(String(60), unique=True, nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     student: Mapped["StudentProfile | None"] = relationship(back_populates="user", uselist=False)
@@ -235,3 +238,12 @@ class InteractionEvent(Base):
     match_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     value: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class AppMeta(Base):
+    """Key/value settings, e.g. the version of the seeded demo data."""
+
+    __tablename__ = "app_meta"
+
+    key: Mapped[str] = mapped_column(String(60), primary_key=True)
+    value: Mapped[str] = mapped_column(String(200))

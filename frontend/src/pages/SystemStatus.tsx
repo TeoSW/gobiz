@@ -25,13 +25,13 @@ const ok = (b: boolean | undefined, yes: string, no: string) => <Badge tone={b ?
 
 export default function SystemStatus() {
   const qc = useQueryClient();
-  const { switchTo } = useSession();
+  const { logout } = useSession();
   const q = useQuery({ queryKey: ["system"], queryFn: () => api<S>("/system/status"), refetchInterval: 10000 });
   const sync = useMutation({ mutationFn: () => post("/graph/sync"), onSuccess: () => qc.invalidateQueries({ queryKey: ["system"] }) });
   const reset = useMutation({
     mutationFn: () => post("/system/reset-demo"),
     onSuccess: () => {
-      switchTo(null);
+      logout();
       qc.invalidateQueries();
     },
   });

@@ -1,6 +1,6 @@
 """Offline evaluation of the matching engine against manually labelled relevant students.
 
-Compares three rankers on the demo data, as recommended in the design discussion:
+Compares three rankers on scripts/eval_dataset.py, as recommended in the design discussion:
   * full      - hard filters + 50/25/15/10 score (what the product uses)
   * skills    - same filters, skills component only (baseline)
   * semantic  - embeddings similarity only (baseline)
@@ -27,7 +27,8 @@ from app.matching.embeddings import chunk_similarity, embedder  # noqa: E402
 from app.matching.engine import Weights, rank_key  # noqa: E402
 from app.matching.service import match_pair, opportunity_vectors, student_vectors  # noqa: E402
 from app.models import Opportunity, StudentProfile, User  # noqa: E402
-from app.seed import OPPORTUNITIES, reset_and_seed  # noqa: E402
+from app.seed import reset_and_seed  # noqa: E402
+from scripts.eval_dataset import EVAL_DATA, OPPORTUNITIES  # noqa: E402
 
 K = 5
 
@@ -40,7 +41,7 @@ def metrics(ranked: list[int], relevant: set[int]) -> tuple[float, float, float]
 
 
 def main() -> None:
-    reset_and_seed()
+    reset_and_seed(EVAL_DATA)  # 14 students, 8 companies (the app demo has only 2 + 2)
     if embedder.want_transformer:
         print("Loading embedding model ...")
         embedder._load()  # synchronous for the script

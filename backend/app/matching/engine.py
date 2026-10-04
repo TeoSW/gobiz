@@ -239,20 +239,18 @@ def match(
         highlights.append("Goals ✓")
 
     met = sum(r["status"] == "met" for r in skill_rows)
-    label = "Excellent" if score >= 80 else "Strong" if score >= 65 else "Fair" if score >= 50 else "Weak"
+    label = "Very good fit" if score >= 80 else "Good fit" if score >= 65 else "Possible fit" if score >= 50 else "Weak fit"
+    # plain-language summary, read by both students and companies
     if status == "incompatible":
-        summary = "Not a fit right now: " + blockers[0] + "."
+        summary = "Not a fit right now: " + blockers[0][0].lower() + blockers[0][1:] + "."
     else:
-        parts = [f"{label} match: {met}/{len(skill_rows)} listed skills met"]
-        if n_verified:
-            parts.append(f"{n_verified} similar verified project{'s' if n_verified > 1 else ''}")
-        elif n_declared:
-            parts.append(f"{n_declared} similar self-declared project{'s' if n_declared > 1 else ''}")
+        parts = [f"Meets {met} of {len(skill_rows)} skills"]
+        n_similar = n_verified + n_declared
+        if n_similar:
+            parts.append(f"has done {n_similar} similar project{'s' if n_similar > 1 else ''}")
         if domain_hit:
-            parts.append(f"interest in {o.domain}")
+            parts.append(f"interested in {o.domain}")
         summary = ", ".join(parts) + "."
-        if clarify:
-            summary += " To clarify: " + clarify[0] + "."
 
     return {
         "student_id": s.id,

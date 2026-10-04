@@ -1,303 +1,160 @@
-"""Demo data: fictional companies, students and a university career office.
+"""Demo data: 2 students, 2 companies and 1 professor.
 
-Some company descriptions are in Romanian on purpose - the extraction and the multilingual embedding model
-must handle both languages.
+Three accounts can log in (Test Student, Test SRL, Test Professor); the other two users exist as data so that
+companies see more than one candidate and students see more than one company. The larger dataset used for the
+matching evaluation lives in scripts/eval_dataset.py.
 """
 
 from datetime import date, timedelta
 
 from .db import Base, SessionLocal, engine
 from .models import (
-    Application, CompanyProfile, MentorshipRequest, Message, Opportunity, OpportunitySkill, PastProject, Review, Skill,
-    StudentProfile, StudentSkill, User,
+    AppMeta, Application, CompanyProfile, MentorshipRequest, Message, Opportunity, OpportunitySkill, PastProject,
+    Review, Skill, StudentProfile, StudentSkill, User,
 )
+from .security import hash_password
 from .skills_catalog import SKILLS
 
-TODAY = date.today()
-
-
-def d(days: int) -> date:
-    return TODAY + timedelta(days=days)
-
-
-STUDENTS = [
-    dict(key="andrei", name="Andrei Popescu", headline="BI & data visualization - Power BI, SQL",
-         university="Bucharest University of Economic Studies", faculty="Cybernetics, Statistics and Economic Informatics",
-         study_program="Economic Informatics", year=3, city="Bucharest", hours=20, mode="any",
-         types=["project", "internship"], goals=["paid_project", "course_credit"], domains=["retail", "finance"],
-         courses=["Databases", "Business Intelligence", "Data Analysis"],
-         bio="I build Power BI dashboards and clean messy Excel data. I like turning sales data into clear monthly reports for managers.",
-         skills={"power_bi": 3, "excel": 3, "dashboards": 3, "sql": 2, "data_visualization": 2, "power_query": 2, "python": 1},
-         projects=[("Sales dashboard for the student association", "Power BI dashboard with membership fees and event sales, refreshed monthly.", ["power_bi", "excel"], "retail")]),
-    dict(key="ioana", name="Ioana Dumitrescu", headline="Statistics & econometrics - R, Python",
-         university="Bucharest University of Economic Studies", faculty="Cybernetics, Statistics and Economic Informatics",
-         study_program="Statistics and Econometrics (MSc)", study_level="master", year=1, city="Bucharest", hours=15, mode="remote",
-         types=["project", "job"], goals=["thesis", "paid_project", "part_time_job"], domains=["finance", "banking", "energy"],
-         courses=["Econometrics", "Time Series", "Survey Sampling", "Bayesian Statistics"],
-         bio="Analiza statistica si econometrica: regresii, serii de timp, modele de prognoza. Am analizat chestionare pentru proiecte de cercetare.",
-         skills={"statistics": 3, "econometrics": 3, "r": 3, "data_analysis": 3, "python": 2, "spss": 2, "survey_design": 2},
-         projects=[("Inflation forecasting with ARIMA", "Time series model for monthly CPI with R.", ["econometrics", "r"], "finance")]),
-    dict(key="mihai", name="Mihai Ionescu", headline="Python backend, scraping & ML",
-         university="Politehnica University of Bucharest", faculty="Automatic Control and Computers", study_program="Computer Science",
-         year=3, city="Bucharest", hours=20, mode="remote", types=["project", "job"], goals=["paid_project", "part_time_job"],
-         domains=["e-commerce", "it-services"], courses=["Algorithms", "Databases", "Machine Learning"],
-         bio="Python developer: REST APIs with FastAPI, scrapers with BeautifulSoup and Selenium, data pipelines into PostgreSQL.",
-         skills={"python": 3, "web_scraping": 3, "backend_api": 3, "git": 3, "sql": 2, "javascript": 2, "machine_learning": 2},
-         projects=[("Price tracker", "Scraper that monitors prices on 5 online shops and alerts on drops.", ["web_scraping", "python"], "e-commerce")]),
-    dict(key="elena", name="Elena Stan", headline="Business informatics, year 2 - looking for practice",
-         university="Babes-Bolyai University", faculty="Economics and Business Administration", study_program="Business Informatics",
-         year=2, city="Cluj-Napoca", hours=20, mode="any", types=["internship", "project"],
-         goals=["mandatory_practice", "internship"], domains=["retail", "marketing"], courses=["Databases", "Office Tools"],
-         bio="Second-year student, I need my mandatory practice this year. Good with Excel, learning SQL and Power BI.",
-         skills={"excel": 2, "sql": 1, "data_analysis": 1, "english": 3, "communication": 2}, wants={"power_bi": 0}),
-    dict(key="radu", name="Radu Georgescu", headline="Front-end developer - React, UI",
-         university="Politehnica University of Bucharest", faculty="Automatic Control and Computers", study_program="Computer Engineering",
-         year=4, city="Bucharest", hours=25, mode="hybrid", types=["project", "job"], goals=["paid_project", "full_time_job"],
-         domains=["e-commerce", "tourism"], courses=["Web Programming", "HCI"],
-         bio="I build responsive websites and web apps in React and WordPress, with attention to UI details.",
-         skills={"react": 3, "javascript": 3, "web_development": 3, "ui_design": 2, "wordpress": 2, "git": 2},
-         projects=[("Portfolio site generator", "React + Vite static portfolio template used by 40 students.", ["react", "web_development"], "it-services")]),
-    dict(key="bianca", name="Bianca Matei", headline="Digital marketing & market research",
-         university="Bucharest University of Economic Studies", faculty="Marketing", study_program="Marketing",
-         year=3, city="Bucharest", hours=15, mode="any", types=["project", "internship"], goals=["paid_project", "course_credit"],
-         domains=["marketing", "tourism", "retail"], courses=["Market Research", "Consumer Behaviour", "Digital Marketing"],
-         bio="Social media campaigns, Google Analytics reports and questionnaires for market research.",
-         skills={"digital_marketing": 3, "copywriting": 3, "google_analytics": 2, "market_research": 2, "survey_design": 2, "looker_studio": 1}),
-    dict(key="vlad", name="Vlad Tudor", headline="ML / NLP - MSc Computer Science",
-         university="Alexandru Ioan Cuza University", faculty="Computer Science", study_program="Computational Linguistics (MSc)",
-         study_level="master", year=1, city="Iasi", hours=15, mode="remote", types=["project", "job"],
-         goals=["thesis", "paid_project", "part_time_job"], domains=["healthcare", "it-services"],
-         courses=["Machine Learning", "NLP", "Deep Learning"],
-         bio="Machine learning and NLP: text classification, sentiment analysis, small LLM pipelines. Looking for a real dataset for my thesis.",
-         skills={"machine_learning": 3, "nlp_llm": 3, "python": 3, "deep_learning": 2, "statistics": 2, "sql": 1},
-         projects=[("Romanian sentiment classifier", "Fine-tuned a small transformer on product reviews.", ["nlp_llm", "deep_learning"], "e-commerce")]),
-    dict(key="ana", name="Ana Constantin", headline="Finance student - Excel modelling",
-         university="Bucharest University of Economic Studies", faculty="Finance, Insurance, Banking", study_program="Finance and Banking",
-         year=2, city="Bucharest", hours=15, mode="onsite", types=["internship", "project"],
-         goals=["mandatory_practice", "paid_project"], domains=["finance", "banking"], courses=["Corporate Finance", "Accounting"],
-         bio="Financial analysis and accounting basics, strong Excel. I want to learn VBA and Power BI.",
-         skills={"excel": 3, "financial_analysis": 2, "accounting": 2}, wants={"vba": 1, "power_bi": 0}),
-    dict(key="cristian", name="Cristian Lungu", headline="Automation - Python, VBA, ETL",
-         university="Politehnica University of Bucharest", faculty="Automatic Control and Computers", study_program="Systems Engineering",
-         year=3, city="Bucharest", hours=20, mode="any", types=["project", "internship"], goals=["paid_project", "internship"],
-         domains=["manufacturing", "logistics"], courses=["Databases", "Industrial Informatics"],
-         bio="Automatizez rapoarte repetitive: scripturi Python si macrocomenzi VBA care centralizeaza fisiere Excel si trimit rapoarte zilnice.",
-         skills={"process_automation": 3, "python": 3, "vba": 2, "excel": 2, "etl": 2, "erp_crm": 1}),
-    dict(key="daria", name="Daria Pavel", headline="Econometrics & data visualization",
-         university="Babes-Bolyai University", faculty="Economics and Business Administration", study_program="Statistics and Economic Forecasting",
-         year=3, city="Cluj-Napoca", hours=12, mode="remote", types=["project", "internship"], goals=["thesis", "course_credit"],
-         domains=["energy", "agriculture"], courses=["Econometrics", "Forecasting", "Data Visualization"],
-         bio="Forecasting and regression models in R, clear charts for non-technical audiences. Thesis topic: energy demand.",
-         skills={"statistics": 3, "econometrics": 2, "r": 2, "data_visualization": 2, "excel": 2, "python": 1}),
-    dict(key="sorin", name="Sorin Neagu", headline="SQL & data engineering",
-         university="Bucharest University of Economic Studies", faculty="Cybernetics, Statistics and Economic Informatics",
-         study_program="Databases for Business (MSc)", study_level="master", year=1, city="Bucharest", hours=25, mode="any",
-         types=["project", "job"], goals=["paid_project", "part_time_job"], domains=["logistics", "retail"],
-         courses=["Advanced Databases", "Data Warehousing"],
-         bio="Database design, SQL, cleaning and deduplicating customer data, ETL into a data warehouse, Power BI on top.",
-         skills={"sql": 3, "database_design": 3, "data_cleaning": 3, "etl": 2, "power_bi": 2, "python": 2}),
-    dict(key="maria", name="Maria Iliescu", headline="Business administration - summer internship",
-         university="Alexandru Ioan Cuza University", faculty="Economics and Business Administration", study_program="Business Administration",
-         year=2, city="Iasi", hours=30, mode="onsite", types=["internship"], goals=["mandatory_practice", "internship"],
-         domains=["retail", "tourism"], courses=["Management", "Marketing"],
-         bio="Organised, good communicator, fluent English. Looking for my practice internship in Iasi.",
-         skills={"communication": 3, "english": 3, "excel": 1, "project_management": 1, "market_research": 1}),
-    dict(key="teodor", name="Teodor Rusu", headline="Java / .NET student",
-         university="Politehnica University of Bucharest", faculty="Automatic Control and Computers", study_program="Computer Science",
-         year=2, city="Bucharest", hours=20, mode="hybrid", types=["internship", "job"], goals=["internship", "part_time_job"],
-         domains=["it-services", "banking"], courses=["OOP", "Databases"],
-         bio="Object oriented programming in Java and C#, SQL databases, first Android app.",
-         skills={"java": 2, "csharp": 2, "sql": 2, "git": 2, "mobile_development": 1}),
-    dict(key="larisa", name="Larisa Enache", headline="Data analysis with Python",
-         university="Bucharest University of Economic Studies", faculty="Cybernetics, Statistics and Economic Informatics",
-         study_program="Economic Cybernetics", year=3, city="Bucharest", hours=10, mode="remote", types=["project"],
-         goals=["paid_project", "course_credit"], domains=["retail", "e-commerce"], courses=["Data Mining", "Statistics"],
-         bio="Pandas analyses, data cleaning and charts. Curious about web scraping.",
-         skills={"python": 2, "data_analysis": 2, "data_cleaning": 2, "excel": 2, "statistics": 2}, wants={"web_scraping": 1}),
-]
-
-COMPANIES = [
-    dict(key="carpathia", name="Carpathia Retail SRL", headline="Regional chain of 14 home & garden stores",
-         industry="retail", size="50-249", city="Bucharest", website="https://example.com/carpathia",
-         description="Home & garden retailer with 14 stores and an online shop."),
-    dict(key="nordlogix", name="NordLogix Transport", headline="Road freight & warehousing", industry="logistics",
-         size="10-49", city="Cluj-Napoca", website="https://example.com/nordlogix",
-         description="Firma de transport si depozitare cu 40 de camioane."),
-    dict(key="verde", name="Verde Agro Coop", headline="Cooperative of 60 organic farmers", industry="agriculture",
-         size="1-9", city="Iasi", website="https://example.com/verde", description="Organic produce cooperative."),
-    dict(key="pixelhaus", name="PixelHaus Studio", headline="Small web & branding agency", industry="it-services",
-         size="1-9", city="Bucharest", website="https://example.com/pixelhaus", description="Websites and branding for SMEs."),
-    dict(key="medclinic", name="MedClinic Plus", headline="Private outpatient clinics", industry="healthcare",
-         size="50-249", city="Iasi", website="https://example.com/medclinic", description="Three outpatient clinics in Moldova region."),
-    dict(key="bluewave", name="BlueWave Tourism", headline="Boutique hotels on the Black Sea coast", industry="tourism",
-         size="10-49", city="Constanta", website="https://example.com/bluewave", description="Four boutique hotels."),
-    dict(key="fintrust", name="Fintrust Advisory", headline="Accounting & financial advisory for SMEs", industry="finance",
-         size="10-49", city="Bucharest", website="https://example.com/fintrust", description="Accounting and advisory firm."),
-    dict(key="energo", name="Energo Data", headline="Energy supplier analytics team", industry="energy",
-         size="50-249", city="Cluj-Napoca", website="https://example.com/energo", description="Electricity supplier."),
-]
+# bump when the demo data or the schema changes: an older database is then re-created on startup
+SEED_VERSION = "2-demo-login"
 
 R = dict  # requirement shorthand: R(s=skill, l=min_level, m=mandatory, learn=learnable)
 
-OPPORTUNITIES = [
-    # ------------------------------------------------------------------ open projects
-    dict(key="pbi", company="carpathia", type="project", title="Sales dashboard in Power BI (30,000 transactions)",
-         description="We have a database with 30,000 sales transactions (exported to Excel/CSV) and want a Power BI dashboard "
-                     "with sales analysis by product, period and region. Power BI experience is required; SQL is a plus. "
-                     "The dashboard should refresh monthly and be easy for store managers to read.",
-         tasks=["Import and clean the transactions export", "Build a data model (date, product, region tables)",
-                "Create DAX measures for revenue, margin and growth", "Design the dashboard pages for store managers",
-                "Document the monthly refresh"],
-         outcome="Power BI file + 1-page refresh guide", domain="retail", difficulty=2, hours=10, weeks=3, start=7,
-         mode="remote", city="Bucharest", comp=("fixed", 1500), academic=["course_credit"], mentoring=False,
-         reqs=[R(s="power_bi", l=2, m=True), R(s="excel", l=2, m=True), R(s="sql", l=1), R(s="dashboards", l=2),
-               R(s="data_visualization", l=1)], verified=True),
-    dict(key="dbclean", company="nordlogix", type="project", title="Curatarea si organizarea bazei de date cu clienti",
-         description="Avem o baza de date cu aproximativ 8.000 de clienti, cu dubluri si date incomplete, provenite din 3 fisiere "
-                     "Excel si din vechiul ERP. Vrem o baza de date curata, organizata in MySQL, cu reguli de deduplicare. "
-                     "Cunostinte SQL obligatorii.",
-         tasks=["Centralizarea celor 3 surse de date", "Deduplicarea si curatarea inregistrarilor", "Proiectarea schemei MySQL",
-                "Import si validare", "Documentarea regulilor de curatare"],
-         outcome="Clean MySQL database + cleaning rules document", domain="logistics", difficulty=2, hours=10, weeks=4, start=10,
-         mode="remote", city="Cluj-Napoca", comp=("fixed", 2000), academic=[], mentoring=False,
-         reqs=[R(s="sql", l=2, m=True), R(s="database_design", l=2), R(s="data_cleaning", l=2), R(s="python", l=1, learn=True)]),
-    dict(key="autoreport", company="nordlogix", type="project", title="Automate the daily fleet report (Excel/Python)",
-         description="Every morning a dispatcher spends 2 hours copying data from 6 Excel files into one fleet report. "
-                     "We want this automated with Python or VBA and e-mailed automatically.",
-         tasks=["Map the 6 source files", "Write the automation script", "Generate the formatted Excel report",
-                "Schedule it and send it by e-mail", "Hand over with a short video"],
-         outcome="Working script + scheduled task + handover video", domain="logistics", difficulty=2, hours=8, weeks=2, start=5,
-         mode="remote", city="Cluj-Napoca", comp=("fixed", 1200), academic=["course_credit"], mentoring=False,
-         reqs=[R(s="process_automation", l=2, m=True), R(s="excel", l=2, m=True), R(s="python", l=2), R(s="vba", l=1)]),
-    dict(key="survey", company="verde", type="project", title="Consumer survey on organic vegetables - design & analysis",
-         description="We want to understand who buys organic vegetables in Iasi and why. Design a questionnaire, help us "
-                     "distribute it online and analyse about 400 answers with statistics. Could be a thesis starting point.",
-         tasks=["Design the questionnaire", "Set up the online form", "Clean the answers", "Statistical analysis and segmentation",
-                "Final report with recommendations"],
-         outcome="Questionnaire + dataset + 15-page report", domain="agriculture", difficulty=2, hours=8, weeks=6, start=14,
-         mode="remote", city="Iasi", comp=("fixed", 1000), academic=["course_credit", "thesis"], mentoring=True,
-         reqs=[R(s="survey_design", l=2, m=True), R(s="statistics", l=2, m=True), R(s="market_research", l=1),
-               R(s="spss", l=1, learn=True)], verified=True),
-    dict(key="landing", company="pixelhaus", type="project", title="Responsive website for a local bakery chain",
-         description="Five-page website with menu, store locator and contact form for a client. Design is ready in Figma; "
-                     "we need a developer to build it in React and deploy it.",
-         tasks=["Implement 5 pages from Figma", "Store locator with map", "Contact form", "Deploy and hand over"],
-         outcome="Deployed website + repository", domain="e-commerce", difficulty=2, hours=15, weeks=3, start=3,
-         mode="hybrid", city="Bucharest", comp=("fixed", 2500), academic=[], mentoring=False,
-         reqs=[R(s="react", l=2, m=True), R(s="web_development", l=2, m=True), R(s="ui_design", l=1), R(s="git", l=1)]),
-    dict(key="noshow", company="medclinic", type="project", title="Predict appointment no-shows (small ML project)",
-         description="About 18% of patients miss appointments. With 2 years of anonymised appointment data we want a model "
-                     "that predicts no-shows so reception can send reminders. Python and machine learning required.",
-         tasks=["Explore the anonymised dataset", "Feature engineering", "Train and evaluate classification models",
-                "Explain the most important factors", "Simple scoring script for reception"],
-         outcome="Notebook + model + scoring script + report", domain="healthcare", difficulty=3, hours=10, weeks=6, start=14,
-         mode="remote", city="Iasi", comp=("fixed", 3000), academic=["thesis"], mentoring=True,
-         reqs=[R(s="machine_learning", l=2, m=True), R(s="python", l=2, m=True), R(s="statistics", l=2), R(s="sql", l=1)],
-         verified=True),
-    dict(key="scrape", company="bluewave", type="project", title="Competitor room prices - web scraping & analysis",
-         description="We want to collect publicly available room prices of 20 competing hotels from their own websites "
-                     "(where permitted by their terms) every week and compare them with ours in a simple report.",
-         tasks=["Check terms of use of each site", "Build the scraper", "Store weekly prices", "Weekly comparison report"],
-         outcome="Scraper + weekly CSV + comparison chart", domain="tourism", difficulty=2, hours=8, weeks=3, start=7,
-         mode="remote", city="Constanta", comp=("fixed", 1400), academic=[], mentoring=False,
-         reqs=[R(s="web_scraping", l=2, m=True), R(s="python", l=2, m=True), R(s="data_cleaning", l=1),
-               R(s="data_visualization", l=1)]),
-    dict(key="forecast", company="energo", type="project", title="Electricity demand forecasting (econometrics)",
-         description="Hourly consumption data for 3 years plus temperature. We need an econometric forecasting model "
-                     "(time series) for next-month demand, compared against our current naive method. Thesis welcome.",
-         tasks=["Data preparation", "Seasonality and temperature effects", "ARIMA / regression models", "Backtesting",
-                "Report"], outcome="Model + backtest report", domain="energy", difficulty=3, hours=10, weeks=8, start=21,
-         mode="remote", city="Cluj-Napoca", comp=("fixed", 2500), academic=["thesis", "course_credit"], mentoring=True,
-         reqs=[R(s="econometrics", l=2, m=True), R(s="statistics", l=2, m=True), R(s="r", l=1), R(s="python", l=1)],
-         request_verification=True),
-    dict(key="feedback", company="medclinic", type="project", title="Classify patient feedback comments (NLP)",
-         description="Patients leave ~500 comments a month in Romanian. Classify them by topic (waiting time, staff, prices, "
-                     "cleanliness) and sentiment, and show monthly trends.",
-         tasks=["Label a sample of comments", "Train a classifier or LLM pipeline", "Monthly trend chart"],
-         outcome="Classifier + monthly trend dashboard", domain="healthcare", difficulty=3, hours=8, weeks=5, start=10,
-         mode="remote", city="Iasi", comp=("fixed", 2200), academic=["thesis"], mentoring=False,
-         reqs=[R(s="nlp_llm", l=2, m=True), R(s="python", l=2, m=True), R(s="data_visualization", l=1)]),
-    dict(key="mkt", company="bluewave", type="project", title="Social media & Google Analytics audit",
-         description="Audit our social media and website traffic (Google Analytics 4) for the last season and propose a "
-                     "plan for next summer.", tasks=["GA4 traffic analysis", "Social media audit", "Recommendations deck"],
-         outcome="Audit report + plan", domain="marketing", difficulty=1, hours=6, weeks=3, start=7, mode="remote",
-         city="Constanta", comp=("fixed", 900), academic=["course_credit"], mentoring=False,
-         reqs=[R(s="google_analytics", l=1, m=True), R(s="digital_marketing", l=2), R(s="market_research", l=1)]),
-    # ------------------------------------------------------------------ internships
-    dict(key="intern_da", company="carpathia", type="internship", title="Data analyst internship (practice, 8 weeks)",
-         description="Practica de vara pentru studenti de anul 2 sau 3: rapoarte de vanzari in Excel, introducere in Power BI, "
-                     "lucru alaturi de echipa de BI. Oferim mentorat; Power BI se poate invata pe parcurs.",
-         tasks=["Rapoarte saptamanale de vanzari", "Curatarea datelor de stoc", "Dashboard Power BI cu ajutorul mentorului"],
-         outcome="Practice certificate + portfolio dashboard", domain="retail", difficulty=1, hours=20, weeks=8, start=30,
-         mode="hybrid", city="Bucharest", comp=("monthly", 2500), academic=["mandatory_practice"], mentoring=True,
-         reqs=[R(s="excel", l=2, m=True), R(s="power_bi", l=1, m=True, learn=True), R(s="sql", l=1, learn=True),
-               R(s="communication", l=2)]),
-    dict(key="intern_fin", company="fintrust", type="internship", title="Finance & accounting internship",
-         description="Practice internship in our Bucharest office: financial statements analysis, Excel models, "
-                     "automating repetitive reports with VBA (we will teach you).",
-         tasks=["Financial statement analysis", "Excel models for clients", "VBA automations with a mentor"],
-         outcome="Practice certificate", domain="finance", difficulty=1, hours=15, weeks=8, start=30, mode="onsite",
-         city="Bucharest", comp=("monthly", 2000), academic=["mandatory_practice"], mentoring=True,
-         reqs=[R(s="excel", l=2, m=True), R(s="financial_analysis", l=1, m=True), R(s="accounting", l=1),
-               R(s="vba", l=1, learn=True)]),
-    dict(key="intern_mkt", company="bluewave", type="internship", title="Marketing internship - hotel season prep",
-         description="Remote marketing internship: content calendar, campaign reports, competitor research.",
-         tasks=["Content calendar", "Campaign reports", "Competitor research"], outcome="Practice certificate",
-         domain="tourism", difficulty=1, hours=15, weeks=10, start=45, mode="remote", city="Constanta", comp=("monthly", 1500),
-         academic=["mandatory_practice", "course_credit"], mentoring=True,
-         reqs=[R(s="digital_marketing", l=1, m=True), R(s="copywriting", l=1), R(s="english", l=2)]),
-    dict(key="intern_ops", company="medclinic", type="internship", title="Operations internship at the clinic (Iasi)",
-         description="On-site internship in Iasi: help the operations team with scheduling reports, patient flow and process "
-                     "documentation.", tasks=["Scheduling reports", "Process documentation", "Patient flow analysis"],
-         outcome="Practice certificate", domain="healthcare", difficulty=1, hours=30, weeks=6, start=60, mode="onsite",
-         city="Iasi", comp=("monthly", 2200), academic=["mandatory_practice"], mentoring=True,
-         reqs=[R(s="excel", l=1, m=True), R(s="communication", l=2, m=True), R(s="english", l=2)]),
-    # ------------------------------------------------------------------ jobs
-    dict(key="job_fe", company="pixelhaus", type="job", title="Junior front-end developer (part-time)",
-         description="Part-time junior role, 20h/week, building client websites in React. Hybrid, Bucharest.",
-         tasks=["Build client websites", "Maintain existing sites", "Code reviews with the lead"], outcome="",
-         domain="it-services", difficulty=2, hours=20, weeks=52, start=30, mode="hybrid", city="Bucharest",
-         comp=("monthly", 4000), academic=[], mentoring=True,
-         reqs=[R(s="react", l=2, m=True), R(s="javascript", l=2, m=True), R(s="git", l=1), R(s="ui_design", l=1)]),
-    dict(key="job_da", company="fintrust", type="job", title="Junior data analyst (full-time)",
-         description="Full-time junior data analyst for our advisory team: SQL, Power BI dashboards for SME clients, "
-                     "Excel modelling.", tasks=["Client dashboards", "SQL data extraction", "Monthly KPI packs"], outcome="",
-         domain="finance", difficulty=2, hours=40, weeks=52, start=45, mode="hybrid", city="Bucharest", comp=("monthly", 6500),
-         academic=[], mentoring=False,
-         reqs=[R(s="sql", l=2, m=True), R(s="power_bi", l=2, m=True), R(s="excel", l=2, m=True), R(s="financial_analysis", l=1)]),
-    dict(key="job_py", company="nordlogix", type="job", title="Python developer - logistics tools (part-time)",
-         description="Part-time Python developer (20h) for internal tools: route reports, APIs between our ERP and partners.",
-         tasks=["Internal APIs", "Report automation", "ERP integrations"], outcome="", domain="logistics", difficulty=2,
-         hours=20, weeks=52, start=30, mode="remote", city="Cluj-Napoca", comp=("monthly", 4500), academic=[], mentoring=False,
-         reqs=[R(s="python", l=2, m=True), R(s="backend_api", l=2), R(s="sql", l=2), R(s="erp_crm", l=1)]),
-    dict(key="job_java", company="fintrust", type="job", title="Junior .NET developer (part-time)",
-         description="Maintain our internal invoicing tool written in C#/.NET with a SQL Server database. 20h/week, hybrid.",
-         tasks=["Bug fixes", "Small features", "Database queries"], outcome="", domain="finance", difficulty=2, hours=20,
-         weeks=52, start=30, mode="hybrid", city="Bucharest", comp=("monthly", 4200), academic=[], mentoring=True,
-         reqs=[R(s="csharp", l=2, m=True), R(s="sql", l=2, m=True), R(s="git", l=1)], request_verification=True),
+
+def d(days: int) -> date:
+    return date.today() + timedelta(days=days)
+
+
+# Demo logins (mockup, not real security). Also listed on the login page and in the README.
+DEMO_ACCOUNTS = {
+    "test_student": ("teststudent", "test123"),
+    "test_srl": ("testsrl", "test123"),
+    "prof": ("testprofessor", "test123"),
+}
+
+STUDENTS = [
+    dict(key="test_student", name="Test Student", headline="Data analysis student - Excel, Power BI, SQL",
+         university="Bucharest University of Economic Studies", faculty="Cybernetics, Statistics and Economic Informatics",
+         study_program="Economic Informatics", year=3, city="Bucharest", hours=20, mode="any",
+         types=["project", "internship"], goals=["paid_project", "course_credit", "mandatory_practice"],
+         domains=["retail", "finance", "logistics"], courses=["Databases", "Business Intelligence", "Statistics"],
+         bio="I like turning messy Excel files into clear reports. I have built Power BI dashboards for university "
+             "projects and I am learning Python.",
+         skills={"excel": 3, "power_bi": 2, "sql": 2, "data_visualization": 2, "dashboards": 2, "statistics": 2, "python": 1},
+         wants={"machine_learning": 0},
+         projects=[("Sales report for a course project", "Power BI report on a public retail dataset.",
+                    ["power_bi", "excel"], "retail")]),
+    dict(key="maria", name="Maria Ionescu", headline="Python and web developer",
+         university="Politehnica University of Bucharest", faculty="Automatic Control and Computers",
+         study_program="Computer Science", year=4, city="Bucharest", hours=20, mode="remote",
+         types=["project", "job"], goals=["paid_project", "part_time_job"], domains=["e-commerce", "logistics", "it-services"],
+         courses=["Web Programming", "Databases", "Machine Learning"],
+         bio="I build web apps in React and small tools in Python: scrapers, scripts that automate reports and REST APIs.",
+         skills={"python": 3, "web_development": 3, "git": 3, "react": 2, "javascript": 2, "sql": 2, "web_scraping": 2,
+                 "process_automation": 2, "backend_api": 2},
+         projects=[("Price tracker", "Scraper that checks prices on 5 online shops.", ["web_scraping", "python"], "e-commerce")]),
 ]
 
-# Past collaborations -> verified portfolio + reviews.  (key, company, student, title, skills, domain, status, ratings)
-HISTORY = [
-    ("h1", "carpathia", "andrei", "Monthly sales report in Power BI (pilot)", ["power_bi", "excel", "dashboards"], "retail",
-     "completed", {"quality": 5, "deadline": 5, "communication": 4}, {"clarity": 5, "collaboration": 5, "payment": 5}),
-    ("h2", "fintrust", "andrei", "Excel KPI pack for an SME client", ["excel", "power_query", "dashboards"], "finance",
-     "completed", {"quality": 5, "deadline": 5, "communication": 5}, {"clarity": 4, "collaboration": 5, "payment": 5}),
-    ("h3", "verde", "ioana", "Customer satisfaction survey analysis", ["survey_design", "statistics", "r"], "agriculture",
-     "completed", {"quality": 5, "deadline": 4, "communication": 5}, {"clarity": 4, "collaboration": 5, "payment": 5}),
-    ("h4", "nordlogix", "cristian", "Automated daily shipment report", ["process_automation", "python", "excel"], "logistics",
-     "completed", {"quality": 5, "deadline": 5, "communication": 5}, {"clarity": 5, "collaboration": 5, "payment": 5}),
-    ("h5", "nordlogix", "sorin", "Supplier database deduplication", ["sql", "data_cleaning", "database_design"], "logistics",
-     "completed", {"quality": 5, "deadline": 4, "communication": 5}, {"clarity": 5, "collaboration": 4, "payment": 5}),
-    ("h6", "bluewave", "mihai", "Hotel reviews scraper", ["web_scraping", "python"], "tourism",
-     "completed", {"quality": 4, "deadline": 5, "communication": 4}, {"clarity": 4, "collaboration": 4, "payment": 5}),
-    ("h7", "pixelhaus", "radu", "Landing page for a dental clinic", ["react", "web_development"], "healthcare",
-     "in_progress", None, None),
-    ("h8", "medclinic", "bianca", "Patient survey dashboard in Looker Studio", ["looker_studio", "survey_design"], "healthcare",
-     "delivered", None, None),
-    ("h9", "energo", "daria", "Consumption data cleaning & charts", ["data_cleaning", "data_visualization", "r"], "energy",
-     "paid", None, None),
+COMPANIES = [
+    dict(key="test_srl", name="Test SRL", headline="Home and garden shop with 3 stores and an online shop (demo company)",
+         industry="retail", size="10-49", city="Bucharest", website="",
+         description="Demo company. Sells home and garden products in 3 stores and online."),
+    dict(key="demo_logistics", name="Demo Logistics SRL", headline="Transport and warehousing (demo company)",
+         industry="logistics", size="10-49", city="Cluj-Napoca", website="",
+         description="Demo company. 40 trucks and one warehouse."),
 ]
+
+UNIVERSITY = [dict(key="prof", name="Test Professor", headline="University mentor and project validator (demo)")]
+
+OPPORTUNITIES = [
+    # ---------------------------------------------------------------- Test SRL
+    dict(key="pbi", company="test_srl", type="project", title="Sales dashboard in Power BI",
+         description="We have about 30,000 sales transactions in Excel files. We want a Power BI dashboard that shows "
+                     "sales by product, month and store. Power BI is required; SQL is a plus. The report should be easy "
+                     "for store managers to read.",
+         tasks=["Clean and combine the Excel files", "Build the data model", "Create the dashboard pages",
+                "Write a short guide for the monthly update"],
+         outcome="Power BI file and a 1-page guide", domain="retail", difficulty=2, hours=10, weeks=3, start=7,
+         mode="remote", city="Bucharest", comp=("fixed", 1500), academic=["course_credit"], mentoring=False,
+         reqs=[R(s="power_bi", l=2, m=True), R(s="excel", l=2, m=True), R(s="sql", l=1), R(s="data_visualization", l=1)],
+         verified=True),
+    dict(key="site", company="test_srl", type="project", title="New design for our online shop",
+         description="Our online shop looks old. We want a new, simple and mobile-friendly version built in React, "
+                     "from a design that is already made in Figma.",
+         tasks=["Build the pages from the Figma design", "Make it work well on phones", "Connect the product list to our API"],
+         outcome="Working website and its code", domain="e-commerce", difficulty=2, hours=15, weeks=4, start=10,
+         mode="hybrid", city="Bucharest", comp=("fixed", 2500), academic=[], mentoring=False,
+         reqs=[R(s="react", l=2, m=True), R(s="web_development", l=2, m=True), R(s="ui_design", l=1), R(s="git", l=1)]),
+    dict(key="intern", company="test_srl", type="internship", title="Data analyst internship (summer practice)",
+         description="Summer practice for 2nd or 3rd year students. You will make weekly sales reports in Excel and "
+                     "learn Power BI with our team. A mentor helps you every week.",
+         tasks=["Weekly sales reports in Excel", "Clean the stock data", "Build a first Power BI report with your mentor"],
+         outcome="Practice certificate", domain="retail", difficulty=1, hours=20, weeks=8, start=30, mode="hybrid",
+         city="Bucharest", comp=("monthly", 2500), academic=["mandatory_practice"], mentoring=True,
+         reqs=[R(s="excel", l=2, m=True), R(s="power_bi", l=1, m=True, learn=True), R(s="communication", l=1)]),
+    dict(key="analyst_job", company="test_srl", type="job", title="Junior data analyst (part-time)",
+         description="Part-time job, 20 hours a week. You will keep our sales reports up to date with SQL and Power BI.",
+         tasks=["Update the weekly sales reports", "Answer data questions from the store managers"],
+         outcome="", domain="retail", difficulty=2, hours=20, weeks=52, start=30, mode="hybrid", city="Bucharest",
+         comp=("monthly", 4000), academic=[], mentoring=True,
+         reqs=[R(s="sql", l=2, m=True), R(s="power_bi", l=2, m=True), R(s="excel", l=2)]),
+    # ---------------------------------------------------------------- Demo Logistics SRL
+    dict(key="autoreport", company="demo_logistics", type="project", title="Automate the daily truck report",
+         description="Every morning someone copies data from 6 Excel files into one report. We want this done "
+                     "automatically, with Python or Excel macros.",
+         tasks=["Look at the 6 Excel files", "Write the automation", "Send the report by e-mail every morning"],
+         outcome="Working script and a short video on how to use it", domain="logistics", difficulty=2, hours=8, weeks=2,
+         start=5, mode="remote", city="Cluj-Napoca", comp=("fixed", 1200), academic=["course_credit"], mentoring=False,
+         reqs=[R(s="process_automation", l=2, m=True), R(s="excel", l=2, m=True), R(s="python", l=2), R(s="vba", l=1)],
+         request_verification=True),
+    dict(key="dbclean", company="demo_logistics", type="project", title="Curatarea bazei de date cu clienti",
+         description="Avem aproximativ 8.000 de clienti in mai multe fisiere Excel, cu dubluri si date lipsa. Vrem o baza "
+                     "de date curata in MySQL. SQL este obligatoriu.",
+         tasks=["Combine the Excel files", "Remove duplicates and fix missing data", "Create the MySQL tables",
+                "Import and check the data"],
+         outcome="Clean MySQL database", domain="logistics", difficulty=2, hours=10, weeks=4, start=14, mode="remote",
+         city="Cluj-Napoca", comp=("fixed", 2000), academic=[], mentoring=False,
+         reqs=[R(s="sql", l=2, m=True), R(s="data_cleaning", l=2), R(s="database_design", l=1), R(s="python", l=1, learn=True)]),
+    dict(key="logintern", company="demo_logistics", type="internship", title="Logistics data internship",
+         description="Practice internship in our Cluj office. You will look at delivery times and fuel costs in Excel. "
+                     "We can teach you some Python.",
+         tasks=["Collect delivery and fuel data", "Find the most expensive routes", "Present the results to the team"],
+         outcome="Practice certificate", domain="logistics", difficulty=1, hours=20, weeks=6, start=45, mode="onsite",
+         city="Cluj-Napoca", comp=("monthly", 2000), academic=["mandatory_practice"], mentoring=True,
+         reqs=[R(s="excel", l=2, m=True), R(s="data_analysis", l=1), R(s="python", l=1, learn=True)]),
+    dict(key="pyjob", company="demo_logistics", type="job", title="Python developer (part-time)",
+         description="Part-time, 20 hours a week, remote. You will build small internal tools in Python: reports, "
+                     "scripts and simple APIs.",
+         tasks=["Build and maintain internal tools", "Automate reports"],
+         outcome="", domain="logistics", difficulty=2, hours=20, weeks=52, start=30, mode="remote", city="Cluj-Napoca",
+         comp=("monthly", 4500), academic=[], mentoring=False,
+         reqs=[R(s="python", l=2, m=True), R(s="sql", l=2), R(s="backend_api", l=1), R(s="git", l=1)]),
+]
+
+# past and running collaborations: (key, company, student, title, skills, domain, status, company rating, student rating)
+HISTORY = [
+    ("h1", "test_srl", "test_student", "Monthly sales report in Excel", ["excel", "dashboards"], "retail", "completed",
+     {"quality": 5, "deadline": 5, "communication": 4}, {"clarity": 5, "collaboration": 5, "payment": 5}),
+    ("h2", "demo_logistics", "maria", "Delivery prices scraper", ["web_scraping", "python"], "logistics", "completed",
+     {"quality": 5, "deadline": 4, "communication": 5}, {"clarity": 4, "collaboration": 5, "payment": 5}),
+    ("h3", "demo_logistics", "test_student", "Fuel cost dashboard", ["power_bi", "data_visualization"], "logistics",
+     "in_progress", None, None),
+]
+
+# (opportunity, student, kind, status, message)
+PENDING = [
+    ("site", "maria", "application", "pending", "I have built two React shops before. Happy to help."),
+    ("pyjob", "maria", "application", "pending", "I write Python tools every week, see my GitHub."),
+    ("intern", "test_student", "invitation", "pending", "Hi! Your profile fits our summer practice. Interested?"),
+]
+
+# (opportunity, student, accepted by the professor?, note)
+MENTORSHIP = [
+    ("autoreport", "test_student", False, "I would like help choosing between Python and Excel macros."),
+]
+
+DEMO_DATA = dict(students=STUDENTS, companies=COMPANIES, university=UNIVERSITY, opportunities=OPPORTUNITIES,
+                 history=HISTORY, pending=PENDING, mentorship=MENTORSHIP, accounts=DEMO_ACCOUNTS)
 
 
 def _req(r: dict) -> OpportunitySkill:
@@ -305,22 +162,29 @@ def _req(r: dict) -> OpportunitySkill:
                             learnable=r.get("learn", False), source="manual")
 
 
-def seed(db) -> None:
+def _user(db, role: str, entry: dict, accounts: dict) -> User:
+    username, password = accounts.get(entry["key"], (None, None))
+    u = User(role=role, name=entry["name"], email=f"{entry['key']}@demo.local", headline=entry["headline"],
+             username=username, password_hash=hash_password(password) if password else None)
+    db.add(u)
+    db.flush()
+    return u
+
+
+def seed(db, data: dict | None = None) -> None:
+    data = data or DEMO_DATA
+    accounts = data.get("accounts", {})
     for s in SKILLS:
         db.add(Skill(**s))
 
     users: dict[str, User] = {}
-    for st in STUDENTS:
-        u = User(role="student", name=st["name"], email=f"{st['key']}@students.demo", headline=st["headline"])
-        db.add(u)
-        db.flush()
-        users[st["key"]] = u
+    for st in data["students"]:
+        u = users[st["key"]] = _user(db, "student", st, accounts)
         p = StudentProfile(
             user_id=u.id, university=st["university"], faculty=st["faculty"], study_program=st["study_program"],
             study_level=st.get("study_level", "bachelor"), year=st["year"], city=st["city"], bio=st["bio"],
             accepted_types=st["types"], goals=st["goals"], domains=st["domains"], courses=st["courses"],
             hours_per_week=st["hours"], available_from=d(-30), available_to=d(240), work_mode=st["mode"],
-            github_url=f"https://github.com/{st['key']}-demo" if "python" in st["skills"] or "javascript" in st["skills"] else "",
         )
         for sid, lvl in st["skills"].items():
             p.skills.append(StudentSkill(skill_id=sid, level=lvl, wants_to_learn=False))
@@ -330,22 +194,17 @@ def seed(db) -> None:
             p.past_projects.append(PastProject(title=title, description=desc, skills=skills, domain=domain))
         db.add(p)
 
-    for c in COMPANIES:
-        u = User(role="company", name=c["name"], email=f"{c['key']}@company.demo", headline=c["headline"])
-        db.add(u)
-        db.flush()
-        users[c["key"]] = u
+    for c in data["companies"]:
+        u = users[c["key"]] = _user(db, "company", c, accounts)
         db.add(CompanyProfile(user_id=u.id, industry=c["industry"], size=c["size"], city=c["city"],
                               website=c["website"], description=c["description"]))
 
-    uni = User(role="university", name="Prof. Elena Marin", email="career.office@university.demo",
-               headline="Career & Practice Office (demo university) - mentor and validator")
-    db.add(uni)
-    db.flush()
-    users["uni"] = uni
+    for un in data["university"]:
+        users[un["key"]] = _user(db, "university", un, accounts)
+    validator = users[data["university"][0]["key"]]
 
     opps: dict[str, Opportunity] = {}
-    for i, o in enumerate(OPPORTUNITIES):
+    for o in data["opportunities"]:
         comp_type, amount = o["comp"]
         opp = Opportunity(
             company_id=users[o["company"]].id, type=o["type"], title=o["title"], description=o["description"],
@@ -354,7 +213,8 @@ def seed(db) -> None:
             deadline=d(o["start"] + 7 * o["weeks"]) if o["type"] == "project" else None, work_mode=o["mode"],
             city=o["city"], compensation_type=comp_type, compensation_amount=amount, academic_options=o["academic"],
             mentoring_offered=o["mentoring"], status="open", university_verified=o.get("verified", False),
-            verified_by=uni.id if o.get("verified") else None, verification_requested=o.get("request_verification", False),
+            verified_by=validator.id if o.get("verified") else None,
+            verification_requested=o.get("request_verification", False),
         )
         for r in o["reqs"]:
             opp.skills.append(_req(r))
@@ -362,7 +222,7 @@ def seed(db) -> None:
         db.flush()
         opps[o["key"]] = opp
 
-    for key, comp, stud, title, skills, domain, status, c_rating, s_rating in HISTORY:
+    for _key, comp, stud, title, skills, domain, status, c_rating, s_rating in data["history"]:
         o = Opportunity(
             company_id=users[comp].id, type="project", title=title,
             description=f"{title}. Completed through GoBiz." if status == "completed" else f"{title}.",
@@ -387,44 +247,36 @@ def seed(db) -> None:
                           direction="student_to_company", ratings=s_rating,
                           overall=round(sum(s_rating.values()) / 3, 2), comment="Clear brief and paid on time."))
 
-    # open pipeline: some applications and invitations
-    pending = [
-        ("pbi", "andrei", "application", "pending", "I built a similar monthly sales dashboard for your pilot."),
-        ("pbi", "sorin", "application", "pending", "SQL + Power BI, happy to help."),
-        ("pbi", "elena", "application", "pending", "I'd love to learn on a real dataset."),
-        ("dbclean", "sorin", "invitation", "pending", "Your deduplication project for us was great - interested?"),
-        ("survey", "ioana", "invitation", "accepted", "Would you like to design our survey?"),
-        ("noshow", "vlad", "application", "pending", "Could be my thesis - I have done classification projects."),
-        ("intern_da", "elena", "application", "pending", "I need my mandatory practice this summer."),
-        ("scrape", "larisa", "application", "pending", "I am learning scraping and know pandas well."),
-        ("autoreport", "cristian", "invitation", "pending", "You automated our shipment report - one more?"),
-    ]
-    for okey, skey, kind, status, msg in pending:
+    for okey, skey, kind, status, msg in data["pending"]:
         o = opps[okey]
         db.add(Application(opportunity_id=o.id, student_id=users[skey].id, kind=kind, status=status, message=msg))
         company = db.get(User, o.company_id)
         sender, recipient = (users[skey], company) if kind == "application" else (company, users[skey])
         db.add(Message(opportunity_id=o.id, sender_id=sender.id, recipient_id=recipient.id, body=msg))
 
-    db.add(MentorshipRequest(opportunity_id=opps["noshow"].id, student_id=users["vlad"].id,
-                             note="I'd like guidance on evaluating the model for imbalanced classes."))
-    db.add(MentorshipRequest(opportunity_id=opps["survey"].id, student_id=users["ioana"].id, mentor_id=uni.id,
-                             status="accepted", note="Sampling design for the survey."))
+    for okey, skey, accepted, note in data["mentorship"]:
+        db.add(MentorshipRequest(opportunity_id=opps[okey].id, student_id=users[skey].id, note=note,
+                                 mentor_id=validator.id if accepted else None, status="accepted" if accepted else "pending"))
+
+    db.merge(AppMeta(key="seed_version", value=SEED_VERSION if data is DEMO_DATA else "custom"))
     db.commit()
 
 
-def reset_and_seed() -> None:
+def reset_and_seed(data: dict | None = None) -> None:
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
-        seed(db)
+        seed(db, data)
 
 
 def ensure_seeded() -> None:
+    """Seed an empty database, and re-create an older one (schema or demo data changed)."""
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
-        if db.query(User).count() == 0:
-            seed(db)
+        meta = db.get(AppMeta, "seed_version")
+        if meta is not None and meta.value == SEED_VERSION:
+            return
+    reset_and_seed()
 
 
 if __name__ == "__main__":

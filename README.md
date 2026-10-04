@@ -28,7 +28,8 @@ Company describes a problem -> LLM extracts tasks + skills -> company confirms
 **Three tabs:** Projects, Internships and Jobs. Each side declares what it is interested in. A year-2 student may want only the mandatory practice internship; another student may only want a project they can get course credit for.
 
 **Student**
-- Profile: university, faculty, year, courses, skills at levels 0-3 plus a separate "want to learn" flag, self-declared projects, availability (hours/week, period, remote/on-site/hybrid), goals (paid project, course credit, mandatory practice, thesis, internship, part-time or full-time job), domains of interest, CV upload (PDF/DOC/DOCX/ODT, max 5 MB), GitHub/portfolio links.
+- Profile: university, faculty, year, courses, skills at levels 0-3 plus a separate "want to learn" flag, self-declared projects, availability (hours/week, period, remote/on-site/hybrid), goals (paid project, course credit, mandatory practice, thesis, internship, part-time or full-time job), domains of interest, GitHub/portfolio links.
+- **CV section** (top of the profile, and on the dashboard until a CV is uploaded): drag & drop or choose a file (PDF/DOC/DOCX/ODT, max 5 MB), open, replace, remove. A "Fill my profile from my CV" button is already in place, marked *Coming soon*: the next step is for the local LLM to read the CV and pre-fill skills, courses and projects for the student to confirm.
 - Personalised recommendations per tab, with a score and an explanation (Power BI ✓ · SQL ✓ · availability ✓ · similar experience ✓ · to clarify: ...).
 - Explore shows **every** opportunity (incompatible ones included, marked "Not a fit") with filters: skill, work mode, University Verified, mentoring, course credit / practice / thesis.
 - Apply, accept or decline invitations, withdraw, request university mentorship, mark work as delivered, review the company.
@@ -264,21 +265,30 @@ npm run dev
 
 App: http://localhost:5173. For the LLM, install Ollama natively (https://ollama.com, MIT) and run `ollama pull qwen3:1.7b`; without it the rule-based extractor is used.
 
-### Demo personas
+### Demo accounts (mock login)
 
-There is no real login in the prototype: the selector in the header switches between 14 students, 8 companies and the university career office. The data is fictional and resets from **System & AI status -> Reset demo data**.
+Open http://localhost:8080 (Docker) or http://localhost:5173 (local development) and log in. The login page lists these accounts; clicking one logs you in.
 
-Good scenarios to try:
-- **Andrei Popescu** (student): 95% on "Sales dashboard in Power BI", with 2 verified projects.
-- **Elena Stan** (year 2): Power BI at level 0 with "want to learn". She is incompatible with the project (Power BI required) but compatible with the internship, where Power BI is marked learnable.
-- **Carpathia Retail SRL** (company): *Post opportunity* -> *Fill with an example* (Romanian text) -> *Analyze with AI*.
-- **Prof. Elena Marin** (university): Insights, skill gap, verification queue.
+| Account | Role | Username | Password |
+|---|---|---|---|
+| Test Student | student | `teststudent` | `test123` |
+| Test SRL | company | `testsrl` | `test123` |
+| Test Professor | professor (university) | `testprofessor` | `test123` |
+
+The demo data is deliberately small: 2 students (Test Student and Maria Ionescu), 2 companies (Test SRL and Demo Logistics SRL) and 1 professor. Maria Ionescu and Demo Logistics SRL have no login; they exist so that companies see more than one candidate and students see more than one company. The data is fictional and resets from **System & AI status -> Reset demo data**.
+
+The login is a **mockup**: the server checks the password (PBKDF2 hash), but afterwards the app identifies the user through the `X-User-Id` header, which any client could forge. Fine for a prototype, not for production.
+
+Things to try:
+- **Test Student:** the dashboard shows an invitation, a project in progress and the CV section. Open "Sales dashboard in Power BI" to see why the fit is high.
+- **Test SRL:** *Post an opportunity* -> *Fill with an example* (Romanian text) -> *Analyze with AI*. On "New design for our online shop" you can see Maria's application and select her.
+- **Test Professor:** *Insights* (charts), the University Verified queue and a mentorship request from Test Student.
 
 ## Tests and evaluation
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -q                    # 33 tests: filters, scores, extraction, hybrid merge, full API flow
+.venv/Scripts/python -m pytest -q                    # 37 tests: filters, scores, extraction, login, CV, full API flow
 .venv/Scripts/python -m scripts.evaluate_matching    # precision@5 / recall@5 / MRR vs baselines
 ```
 
@@ -287,7 +297,7 @@ cd frontend
 npm run typecheck && npm run build
 ```
 
-`evaluate_matching` compares, on manually labelled pairs ([backend/scripts/eval_labels.json](backend/scripts/eval_labels.json)), the full engine against a **skills-only** baseline and a **semantic-only** baseline, as the discussion recommended. Results on the demo data (14 students, 18 opportunities):
+`evaluate_matching` compares, on manually labelled pairs ([backend/scripts/eval_labels.json](backend/scripts/eval_labels.json)), the full engine against a **skills-only** baseline and a **semantic-only** baseline, as the discussion recommended. It runs on its own larger dataset ([backend/scripts/eval_dataset.py](backend/scripts/eval_dataset.py): 14 students, 8 companies, 18 opportunities), separate from the small app demo. Results:
 
 | Ranker | Embeddings | P@5 | R@5 | MRR |
 |---|---|---|---|---|
@@ -329,16 +339,17 @@ GoBiz/
 
 ## API
 
-Full interactive documentation: http://localhost:8080/docs (Docker) or http://localhost:8000/docs (local development). The prototype identifies the user through the `X-User-Id` header (the persona selector).
+Full interactive documentation: http://localhost:8080/docs (Docker) or http://localhost:8000/docs (local development). After the mock login (`POST /api/auth/login`), the app identifies the user through the `X-User-Id` header.
 
 | Method | Route | Who |
 |---|---|---|
+| POST | `/api/auth/login` · GET `/api/auth/demo-accounts` · GET `/api/me` | all |
 | GET | `/api/opportunities?type=&skill=&work_mode=&verified=&academic=&sort=match` | all (with match for students) |
 | POST | `/api/ai/extract` | company |
 | POST / PUT | `/api/opportunities`, `/api/opportunities/{id}` | company |
 | GET | `/api/opportunities/{id}/candidates` | owning company |
 | POST | `/api/opportunities/{id}/apply` · `/invite` · `/select` · `/status` · `/reviews` · `/mentorship` | student / company |
-| GET / PUT | `/api/students/me`, `/api/students/me/recommendations`, `POST /api/students/me/cv` | student |
+| GET / PUT | `/api/students/me`, `/api/students/me/recommendations`, `POST` / `DELETE /api/students/me/cv` | student |
 | GET | `/api/students?skill=&min_level=&opportunity_id=` | company, university |
 | GET / POST | `/api/messages/threads`, `/api/messages` | student, company |
 | GET | `/api/university/dashboard`, `/verification-queue`, `/mentorship` | university |
@@ -346,9 +357,9 @@ Full interactive documentation: http://localhost:8080/docs (Docker) or http://lo
 
 ## Limitations and next steps
 
-- **Authentication:** personas instead of accounts. Next step: OIDC (e.g. Keycloak, Apache-2.0) and roles from the token.
+- **Authentication:** mock login with 3 test accounts. Next step: OIDC (e.g. Keycloak, Apache-2.0) and signed tokens instead of the `X-User-Id` header.
 - **Payment** is only a status (the company confirms payment). A real integration needs a payment provider and contracts.
-- **Real CV parsing:** the CV is stored, not read. The same LLM can extract skills from a CV for the student to confirm.
+- **CV autofill:** the CV is stored and shown to companies, but not read yet. The "Fill from CV" button is ready for the same local LLM to extract skills, courses and projects for the student to confirm.
 - **Learned ranker:** once there are enough interactions, train a model (e.g. LightGBM LambdaRank, MIT) on `interaction_events` and compare it with the current engine using `evaluate_matching`.
 - **Full ESCO catalog:** the current catalog is small and ESCO-inspired; it can be extended with ESCO labels in Romanian.
 - **GDPR:** consent for processing, data retention, export/deletion of an account before going live.

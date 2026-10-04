@@ -104,7 +104,7 @@ export default function CompanyDashboard() {
           icon={<Star className="size-5" />}
           label="Your rating from students"
           value={me.data?.ratings.average?.toFixed(1) ?? "-"}
-          sub={me.data?.ratings.count ? `${me.data.ratings.count} reviews` : "no reviews yet"}
+          sub={me.data?.ratings.count ? `from ${me.data.ratings.count} review${me.data.ratings.count === 1 ? "" : "s"}` : "no reviews yet"}
         />
       </div>
 
@@ -130,7 +130,7 @@ export default function CompanyDashboard() {
           <Skeleton className="h-48" />
         ) : list.length === 0 ? (
           <Empty icon={<FolderOpen className="size-8" />} title="Nothing here yet" action={<Link className="btn-primary" to="/company/new">Post an opportunity</Link>}>
-            Describe a problem in plain words; the AI turns it into tasks and skills for you to confirm.
+            Write what you need in plain words. AI turns it into tasks and skills for you to check.
           </Empty>
         ) : (
           <div className="card divide-y divide-border">

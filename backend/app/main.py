@@ -12,7 +12,7 @@ from .config import get_settings
 from .db import SessionLocal, wait_for_db
 from .llm.providers import ensure_model_pulled
 from .matching.embeddings import embedder
-from .routers import ai, applications, companies, messages, meta, opportunities, students, university
+from .routers import ai, applications, auth, companies, messages, meta, opportunities, students, university
 from .seed import ensure_seeded
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -43,7 +43,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-for r in (meta, ai, students, companies, opportunities, applications, messages, university):
+for r in (auth, meta, ai, students, companies, opportunities, applications, messages, university):
     app.include_router(r.router)
 
 

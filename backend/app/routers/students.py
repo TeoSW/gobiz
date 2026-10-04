@@ -95,6 +95,16 @@ async def upload_cv(file: UploadFile = File(...), user: User = Depends(require_r
     return {"cv_filename": p.cv_filename}
 
 
+@router.delete("/me/cv")
+def delete_cv(user: User = Depends(require_role("student")), db: Session = Depends(get_db)):
+    p = _profile(db, user.id)
+    for old in Path(get_settings().upload_dir).glob(f"cv_{user.id}_*"):
+        old.unlink(missing_ok=True)
+    p.cv_filename = ""
+    db.commit()
+    return {"cv_filename": ""}
+
+
 @router.get("/{student_id}/cv")
 def download_cv(student_id: int, _user: User = Depends(current_user), db: Session = Depends(get_db)):
     p = _profile(db, student_id)

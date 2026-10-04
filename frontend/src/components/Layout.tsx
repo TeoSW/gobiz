@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { Menu, MessageSquare, Moon, Sun, X } from "lucide-react";
+import { LogIn, LogOut, Menu, MessageSquare, Moon, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useSession } from "../lib/session";
 import { useTheme } from "../lib/theme";
 import type { Role, Thread } from "../lib/types";
+import { Avatar } from "./ui";
 
 const NAV: Record<Role | "guest", { to: string; label: string }[]> = {
   guest: [{ to: "/explore", label: "Explore" }],
@@ -42,41 +43,36 @@ export function Logo() {
   );
 }
 
-function PersonaSwitcher() {
-  const { user, personas, switchTo } = useSession();
+const ROLE_LABEL: Record<Role, string> = { student: "Student", company: "Company", university: "Professor" };
+
+function AccountMenu() {
+  const { user, logout } = useSession();
   const navigate = useNavigate();
-  const groups: { role: Role; label: string }[] = [
-    { role: "student", label: "Students" },
-    { role: "company", label: "Companies" },
-    { role: "university", label: "University" },
-  ];
+  if (!user)
+    return (
+      <Link to="/login" className="btn-primary min-h-10">
+        <LogIn className="size-4" aria-hidden /> Log in
+      </Link>
+    );
   return (
-    <label className="flex items-center gap-2 text-sm">
-      <span className="sr-only">Demo persona</span>
-      <select
-        className="input min-h-10 w-[15rem] cursor-pointer py-0 pr-8 font-medium"
-        value={user?.id ?? ""}
-        onChange={(e) => {
-          const id = e.target.value ? Number(e.target.value) : null;
-          switchTo(id);
-          const role = personas.find((p) => p.id === id)?.role;
-          navigate(role === "student" ? "/student" : role === "company" ? "/company" : role === "university" ? "/university" : "/");
+    <div className="flex items-center gap-2">
+      <Avatar name={user.name} size="sm" />
+      <div className="hidden leading-tight lg:block">
+        <p className="text-sm font-semibold">{user.name}</p>
+        <p className="text-xs text-muted-fg">{ROLE_LABEL[user.role]}</p>
+      </div>
+      <button
+        className="btn-ghost min-h-10 px-2.5"
+        onClick={() => {
+          logout();
+          navigate("/login");
         }}
+        aria-label="Log out"
+        title="Log out"
       >
-        <option value="">Choose demo persona...</option>
-        {groups.map((g) => (
-          <optgroup key={g.role} label={g.label}>
-            {personas
-              .filter((p) => p.role === g.role)
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-          </optgroup>
-        ))}
-      </select>
-    </label>
+        <LogOut className="size-5" aria-hidden />
+      </button>
+    </div>
   );
 }
 
@@ -123,13 +119,11 @@ export function Layout() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-1.5">
-            <div className="hidden sm:block">
-              <PersonaSwitcher />
-            </div>
             <MessagesLink />
             <button onClick={toggleTheme} className="btn-ghost min-h-10 px-2.5" aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}>
               {theme === "dark" ? <Sun className="size-5" aria-hidden /> : <Moon className="size-5" aria-hidden />}
             </button>
+            <AccountMenu />
             <button className="btn-ghost min-h-10 px-2.5 md:hidden" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-controls="mobile-nav" aria-label="Menu">
               {open ? <X className="size-5" aria-hidden /> : <Menu className="size-5" aria-hidden />}
             </button>
@@ -144,9 +138,6 @@ export function Layout() {
                 </NavLink>
               ))}
             </nav>
-            <div className="mt-3 sm:hidden">
-              <PersonaSwitcher />
-            </div>
           </div>
         )}
       </header>

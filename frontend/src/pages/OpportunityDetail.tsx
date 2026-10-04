@@ -73,7 +73,7 @@ function ReviewDialog({ o, direction, open, onClose }: { o: Opportunity; directi
           </label>
           <textarea id="review-comment" className="input" rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
         </div>
-        {direction === "company_to_student" && <Notice>Your review completes the collaboration and adds it to the student's verified portfolio.</Notice>}
+        {direction === "company_to_student" && <Notice>After your review, the project is finished and goes into the student's portfolio.</Notice>}
         <ErrorBox error={m.error} />
         <div className="flex justify-end gap-2">
           <button type="button" className="btn-ghost" onClick={onClose}>
@@ -135,7 +135,7 @@ function CandidateRow({ c, o, onChanged }: { c: CandidateCard; o: Opportunity; o
               </button>
             )}
             <button className="btn-ghost min-h-9 px-3" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
-              <Sparkles className="size-4" aria-hidden /> {expanded ? "Hide" : "Why this score?"}
+              <Sparkles className="size-4" aria-hidden /> {expanded ? "Hide details" : "Why?"}
             </button>
           </div>
           <ErrorBox error={invite.error || select.error} />
@@ -179,14 +179,14 @@ function CandidatesPanel({ o }: { o: Opportunity }) {
         value={tab}
         onChange={setTab}
         tabs={[
-          { id: "ai", label: <><Sparkles className="size-4" aria-hidden /> AI Match</>, count: cands.data?.ai_matches.length },
+          { id: "ai", label: <><Sparkles className="size-4" aria-hidden /> Suggested</>, count: cands.data?.ai_matches.length },
           { id: "applicants", label: "Applicants", count: cands.data?.applicants.length },
           { id: "invited", label: "Invited", count: cands.data?.invited.length },
         ]}
       />
       {tab === "ai" && (
         <p className="mt-3 text-sm text-muted-fg">
-          Ranked from {cands.data?.all_count ?? "…"} students. Hard filters (type, hours, period, work mode, required skills) run first, then the weighted score.
+          All {cands.data?.all_count ?? ""} students, best fits first. Students who clearly do not fit are left out.
         </p>
       )}
       <ErrorBox error={cands.error} />
@@ -200,7 +200,7 @@ function CandidatesPanel({ o }: { o: Opportunity }) {
         </ul>
       ) : (
         <Empty title={tab === "applicants" ? "No applications yet" : tab === "invited" ? "No invitations yet" : "No compatible students yet"}>
-          {tab === "ai" ? "Try making some requirements learnable or optional." : "Invite students from the AI Match tab."}
+          {tab === "ai" ? "Try making some skills optional or learnable." : "You can invite students from the Suggested tab."}
         </Empty>
       )}
     </section>
@@ -327,7 +327,7 @@ function StudentPanel({ o }: { o: Opportunity }) {
         ) : o.status === "open" ? (
           <>
             <h2 className="text-lg font-bold">Interested?</h2>
-            <p className="text-sm text-muted-fg">You can apply even if this was not recommended to you.</p>
+            <p className="text-muted-fg">You can apply even if it was not suggested to you.</p>
             <button className="btn-accent w-full" onClick={() => setApplyOpen(true)}>
               <Send className="size-4" aria-hidden /> Apply to this {o.type}
             </button>
@@ -337,7 +337,7 @@ function StudentPanel({ o }: { o: Opportunity }) {
         )}
         {!o.my_mentorship ? (
           <button className="btn-outline w-full" onClick={() => setMentorOpen(true)}>
-            <HandHelping className="size-4" aria-hidden /> Request university mentorship
+            <HandHelping className="size-4" aria-hidden /> Ask a professor for help
           </button>
         ) : (
           <p className="text-sm text-muted-fg">
@@ -351,7 +351,7 @@ function StudentPanel({ o }: { o: Opportunity }) {
       {o.match && (
         <div className="card p-5">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
-            <Sparkles className="size-5 text-primary-strong" aria-hidden /> Your match
+            <Sparkles className="size-5 text-primary-strong" aria-hidden /> How well you fit
           </h2>
           <MatchBreakdown match={o.match} skillName={skillName} />
         </div>
@@ -402,7 +402,7 @@ function StudentPanel({ o }: { o: Opportunity }) {
             mentor.mutate();
           }}
         >
-          <p className="text-sm text-muted-fg">A professor from the university career office can guide you on harder projects, or help turn this into a course project or thesis topic.</p>
+          <p className="text-muted-fg">A professor can guide you on a harder project, or help you use it for a course or your thesis.</p>
           <div>
             <label className="label" htmlFor="mentor-note">
               What would you like help with?
@@ -503,8 +503,8 @@ export default function OpportunityDetail() {
               <Fact icon={<GraduationCap className="size-4" />} label="Academic use" value={o.academic_options.length ? o.academic_options.map((a) => ACADEMIC_LABEL[a]).join(", ") : "-"} />
             </div>
 
-            <h2 className="mt-6 text-lg font-bold">The problem</h2>
-            <p className="mt-2 whitespace-pre-line text-[15px] leading-relaxed">{o.description}</p>
+            <h2 className="mt-6 text-lg font-bold">What the company needs</h2>
+            <p className="mt-2 max-w-prose whitespace-pre-line leading-relaxed">{o.description}</p>
 
             {o.tasks.length > 0 && (
               <>

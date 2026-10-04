@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Award, BadgeCheck, Briefcase, Inbox, Mail, Sparkles, Star, UserPen } from "lucide-react";
+import { Award, BadgeCheck, Inbox, Mail, Sparkles, Star, UserPen } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { CvUpload } from "../components/CvUpload";
 import { OpportunityCard, StatusBadge, TypeBadge } from "../components/OpportunityCard";
 import { Badge, Empty, ErrorBox, SectionTitle, Skeleton, StatCard, Stars, Tabs } from "../components/ui";
 import { api, post } from "../lib/api";
@@ -12,7 +13,7 @@ export function PortfolioSummary({ s }: { s: Student }) {
   const p = s.portfolio;
   return (
     <div className="card p-5">
-      <SectionTitle sub="Completed on GoBiz and reviewed by the company">Verified portfolio</SectionTitle>
+      <SectionTitle sub="Projects finished on GoBiz and rated by the company">Your portfolio</SectionTitle>
       {p.completed === 0 ? (
         <Empty icon={<Award className="size-8" />} title="No verified projects yet">
           Complete your first project to turn "I know Power BI" into proof.
@@ -82,20 +83,21 @@ export default function StudentDashboard() {
           <p className="mt-1 text-muted-fg">{s?.headline}</p>
         </div>
         <Link to="/student/profile" className="btn-outline">
-          <UserPen className="size-4" aria-hidden /> Edit profile & skills
+          <UserPen className="size-4" aria-hidden /> Edit my profile
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard icon={<Award className="size-5" />} label="Verified projects" value={s?.portfolio.completed ?? "-"} />
-        <StatCard icon={<Star className="size-5" />} label="Average rating" value={s?.ratings.average?.toFixed(1) ?? "-"} sub={s ? `${s.ratings.count} reviews` : undefined} />
-        <StatCard icon={<Mail className="size-5" />} label="Pending invitations" value={apps.data ? invites.length : "-"} />
-        <StatCard icon={<Briefcase className="size-5" />} label="Active collaborations" value={apps.data ? active.length : "-"} />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <StatCard icon={<Award className="size-5" />} label="Finished projects" value={s?.portfolio.completed ?? "-"} />
+        <StatCard icon={<Star className="size-5" />} label="Your rating" value={s?.ratings.average?.toFixed(1) ?? "-"} sub={s ? `from ${s.ratings.count} review${s.ratings.count === 1 ? "" : "s"}` : undefined} />
+        <StatCard icon={<Mail className="size-5" />} label="New invitations" value={apps.data ? invites.length : "-"} />
       </div>
+
+      {s && !s.cv_filename && <CvUpload studentId={s.id} cvFilename="" />}
 
       {invites.length > 0 && (
         <section className="card border-accent/40 p-5" aria-labelledby="inv-title">
-          <SectionTitle sub="Companies that found you through search or AI Match">
+          <SectionTitle sub="Companies that would like to work with you">
             <span id="inv-title">Invitations</span>
           </SectionTitle>
           <ul className="divide-y divide-border">
@@ -131,7 +133,7 @@ export default function StudentDashboard() {
       {active.length > 0 && (
         <section aria-labelledby="active-title">
           <SectionTitle>
-            <span id="active-title">Active collaborations</span>
+            <span id="active-title">Your current work</span>
           </SectionTitle>
           <div className="grid gap-4 md:grid-cols-2">
             {active.map((a) => (
@@ -143,7 +145,7 @@ export default function StudentDashboard() {
 
       <section aria-labelledby="recs-title">
         <SectionTitle
-          sub="Ranked by the matching engine. Incompatible options are hidden here but stay visible in Explore."
+          sub="Best fits first. You can see all of them in Opportunities."
           action={<Tabs label="Recommendation type" value={tab} onChange={setTab} tabs={(["project", "internship", "job"] as OppType[]).map((t) => ({ id: t, label: TYPE_PLURAL[t] }))} />}
         >
           <span id="recs-title" className="inline-flex items-center gap-2">

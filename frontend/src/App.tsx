@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactNode } from "react";
-import { Link, Route, Routes } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { Empty, Spinner } from "./components/ui";
 import { useSession } from "./lib/session";
@@ -8,6 +8,7 @@ import About from "./pages/About";
 import CompanyDashboard from "./pages/CompanyDashboard";
 import Explore from "./pages/Explore";
 import Home from "./pages/Home";
+import Login from "./pages/Login";
 import Messages from "./pages/Messages";
 import OpportunityDetail from "./pages/OpportunityDetail";
 import PostOpportunity from "./pages/PostOpportunity";
@@ -22,18 +23,13 @@ const UniversityDashboard = lazy(() => import("./pages/UniversityDashboard"));
 
 function RequireRole({ roles, children }: { roles: Role[]; children: ReactNode }) {
   const { user, ready } = useSession();
+  const location = useLocation();
   if (!ready) return <Spinner />;
-  if (!user || !roles.includes(user.role))
+  if (!user) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname)}`} replace />;
+  if (!roles.includes(user.role))
     return (
-      <Empty
-        title={`This page is for ${roles.join(" / ")} accounts`}
-        action={
-          <Link to="/" className="btn-primary">
-            Choose a demo persona
-          </Link>
-        }
-      >
-        Use the persona switcher in the header to try GoBiz as a student, a company or the university.
+      <Empty title="This page is not available for your account" action={<Link to="/" className="btn-primary">Go home</Link>}>
+        Log in with another test account to see it.
       </Empty>
     );
   return <>{children}</>;
@@ -44,6 +40,7 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Home />} />
+        <Route path="login" element={<Login />} />
         <Route path="explore" element={<Explore />} />
         <Route path="opportunities/:id" element={<OpportunityDetail />} />
         <Route path="student" element={<RequireRole roles={["student"]}><StudentDashboard /></RequireRole>} />

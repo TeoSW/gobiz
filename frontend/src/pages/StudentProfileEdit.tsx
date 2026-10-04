@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, FileUp, Plus, Save, Trash2 } from "lucide-react";
+import { CheckCircle2, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { CvUpload } from "../components/CvUpload";
 import { ErrorBox, Field, Notice, Segmented, Spinner, ToggleChip } from "../components/ui";
-import { api, ApiError, put } from "../lib/api";
+import { api, put } from "../lib/api";
 import { GOAL_LABEL, LEVELS, TYPE_PLURAL, cap } from "../lib/format";
 import { useSession } from "../lib/session";
 import type { OppType, PastProject, Student, StudentSkill } from "../lib/types";
@@ -78,17 +79,6 @@ export default function StudentProfileEdit() {
     },
   });
 
-  const cv = useMutation({
-    mutationFn: async (file: File) => {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/students/me/cv", { method: "POST", body: fd, headers: { "X-User-Id": String(me.data!.id) } });
-      if (!res.ok) throw new ApiError(res.status, (await res.json()).detail ?? "Upload failed");
-      return res.json();
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["student-me"] }),
-  });
-
   if (me.isLoading || !f) return <Spinner />;
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF({ ...f, [k]: v });
   const toggleIn = <T,>(list: T[], v: T, on: boolean) => (on ? [...list, v] : list.filter((x) => x !== v));
@@ -105,8 +95,10 @@ export default function StudentProfileEdit() {
     >
       <div>
         <h1 className="text-3xl font-extrabold">My profile</h1>
-        <p className="mt-1 text-muted-fg">The matching engine reads this profile. "Know" and "want to learn" are scored differently.</p>
+        <p className="mt-1 max-w-2xl text-muted-fg">Companies and the matching use this profile. Skills you know and skills you want to learn count differently.</p>
       </div>
+
+      <CvUpload studentId={me.data!.id} cvFilename={me.data!.cv_filename} />
 
       <Section title="About you">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -144,14 +136,14 @@ export default function StudentProfileEdit() {
             <input id="courses" className="input" value={courseText} onChange={(e) => setCourseText(e.target.value)} />
           </Field>
           <div className="sm:col-span-2">
-            <Field label="About me" htmlFor="bio" hint="Describe what you have built. This text feeds the semantic (AI) part of the match, in Romanian or English.">
+            <Field label="About me" htmlFor="bio" hint="A few sentences about what you have done. Romanian or English is fine.">
               <textarea id="bio" className="input" rows={4} value={f.bio} onChange={(e) => set("bio", e.target.value)} />
             </Field>
           </div>
         </div>
       </Section>
 
-      <Section title="What are you looking for?" sub="Pick everything that applies. A year-2 student might want only mandatory practice; another only course credit for a project.">
+      <Section title="What are you looking for?" sub="Pick everything that applies.">
         <p className="label">Opportunity types</p>
         <div className="flex flex-wrap gap-2">
           {(["project", "internship", "job"] as OppType[]).map((t) => (
@@ -200,7 +192,7 @@ export default function StudentProfileEdit() {
         </div>
       </Section>
 
-      <Section title="Skills" sub="Be honest: required skills declared below the minimum are a hard filter. Mark skills you want to learn; internships with mentoring will value that.">
+      <Section title="Skills" sub="Choose your level for each skill. Mark the skills you want to learn: internships with a mentor count them.">
         <ul className="divide-y divide-border">
           {f.skills.map((s) => (
             <li key={s.skill_id} className="flex flex-wrap items-center gap-3 py-3">
@@ -223,7 +215,7 @@ export default function StudentProfileEdit() {
         </div>
       </Section>
 
-      <Section title="Projects you have done" sub="Self-declared (course or personal). Verified GoBiz projects are added automatically after completion.">
+      <Section title="Projects you have done" sub="From courses or your own. Projects you finish on GoBiz are added automatically.">
         <div className="space-y-4">
           {f.past_projects.map((p, i) => (
             <div key={i} className="space-y-3 rounded-xl border border-border p-4">
@@ -264,7 +256,7 @@ export default function StudentProfileEdit() {
         </div>
       </Section>
 
-      <Section title="Links & CV">
+      <Section title="Links">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Portfolio URL" htmlFor="pf">
             <input id="pf" type="url" className="input" value={f.portfolio_url} onChange={(e) => set("portfolio_url", e.target.value)} />
@@ -272,18 +264,6 @@ export default function StudentProfileEdit() {
           <Field label="GitHub URL" htmlFor="gh">
             <input id="gh" type="url" className="input" value={f.github_url} onChange={(e) => set("github_url", e.target.value)} />
           </Field>
-        </div>
-        <div className="mt-4">
-          <label className="btn-outline cursor-pointer">
-            <FileUp className="size-4" aria-hidden />
-            {me.data?.cv_filename ? "Replace CV" : "Upload CV"} (PDF, DOC, DOCX, ODT · max 5 MB)
-            <input type="file" accept=".pdf,.doc,.docx,.odt" className="sr-only" onChange={(e) => e.target.files?.[0] && cv.mutate(e.target.files[0])} />
-          </label>
-          {me.data?.cv_filename && <p className="hint">Current: {me.data.cv_filename.split("_").slice(2).join("_")}</p>}
-          {cv.isPending && <p className="hint">Uploading...</p>}
-          <div className="mt-2">
-            <ErrorBox error={cv.error} />
-          </div>
         </div>
       </Section>
 

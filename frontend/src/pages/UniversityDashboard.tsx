@@ -185,7 +185,7 @@ export default function UniversityDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-extrabold">University insights</h1>
-        <p className="mt-1 text-muted-fg">What companies actually ask for, what students can offer, and where the curriculum could adapt.</p>
+        <p className="mt-1 max-w-2xl text-muted-fg">What companies ask for, and what students can already do.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -232,7 +232,7 @@ export default function UniversityDashboard() {
 
         <ChartCard
           title="Skill gap"
-          sub="Share of opportunities asking for a skill vs. share of students who have it at intermediate level or above"
+          sub="How often companies ask for a skill, compared to how many students have it"
           chart={
             <div className="h-80">
               <ResponsiveContainer>

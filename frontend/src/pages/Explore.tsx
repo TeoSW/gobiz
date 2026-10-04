@@ -22,6 +22,7 @@ export default function Explore() {
   const [verified, setVerified] = useState(false);
   const [mentoring, setMentoring] = useState(false);
   const [hideIncompatible, setHideIncompatible] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const isStudent = user?.role === "student";
   const [sort, setSort] = useState(isStudent ? "match" : "recent");
 
@@ -31,6 +32,8 @@ export default function Explore() {
   if (academic) qs.set("academic", academic);
   if (verified) qs.set("verified", "true");
   if (mentoring) qs.set("mentoring", "true");
+
+  const activeFilters = [skill, mode, academic, verified, mentoring, hideIncompatible].filter(Boolean).length;
 
   const all = useQuery({
     queryKey: ["opps", user?.id, qs.toString()],
@@ -52,11 +55,11 @@ export default function Explore() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold">Explore opportunities</h1>
-          <p className="mt-1 text-muted-fg">
+          <h1 className="text-3xl font-extrabold">Opportunities</h1>
+          <p className="mt-1 max-w-2xl text-muted-fg">
             {isStudent
-              ? "Every opportunity shows your match. Recommendations guide you; you can apply to anything."
-              : "Browse what SMEs need right now. Choose a student persona to see personal match scores."}
+              ? "The percentage shows how well each one fits you. You can apply to any of them."
+              : "Projects, internships and jobs posted by companies."}
           </p>
         </div>
       </div>
@@ -86,56 +89,65 @@ export default function Explore() {
             <label htmlFor="search" className="sr-only">
               Search
             </label>
-            <input id="search" className="input pl-9" placeholder="Search title, company or skill" value={q} onChange={(e) => setQ(e.target.value)} />
+            <input id="search" className="input pl-9" placeholder="Search by title, company or skill" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
-          <label className="sr-only" htmlFor="skill-filter">
-            Skill
-          </label>
-          <select id="skill-filter" className="input w-auto min-w-[160px] cursor-pointer" value={skill} onChange={(e) => setSkill(e.target.value)}>
-            <option value="">Any skill</option>
-            {meta?.skills.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <label className="sr-only" htmlFor="mode-filter">
-            Work mode
-          </label>
-          <select id="mode-filter" className="input w-auto cursor-pointer" value={mode} onChange={(e) => setMode(e.target.value)}>
-            <option value="">Any work mode</option>
-            <option value="remote">Remote</option>
-            <option value="hybrid">Hybrid</option>
-            <option value="onsite">On-site</option>
-          </select>
-          <label className="sr-only" htmlFor="sort">
-            Sort
-          </label>
-          <select id="sort" className="input w-auto cursor-pointer" value={sort} onChange={(e) => setSort(e.target.value)}>
-            {isStudent && <option value="match">Best match</option>}
-            <option value="recent">Newest</option>
-            <option value="budget">Highest pay</option>
-          </select>
+          <button type="button" className="btn-outline" onClick={() => setShowFilters((v) => !v)} aria-expanded={showFilters} aria-controls="more-filters">
+            <SlidersHorizontal className="size-4" aria-hidden /> {showFilters ? "Hide filters" : "More filters"}
+            {activeFilters > 0 && <span className="rounded-full bg-primary px-1.5 text-xs text-primary-fg">{activeFilters}</span>}
+          </button>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <SlidersHorizontal className="size-4 text-muted-fg" aria-hidden />
-          <ToggleChip checked={verified} onChange={setVerified}>
-            <BadgeCheck className="size-4" aria-hidden /> University Verified
-          </ToggleChip>
-          <ToggleChip checked={mentoring} onChange={setMentoring}>
-            <Users className="size-4" aria-hidden /> Mentoring offered
-          </ToggleChip>
-          {Object.entries(ACADEMIC_LABEL).map(([k, label]) => (
-            <ToggleChip key={k} checked={academic === k} onChange={(v) => setAcademic(v ? k : "")}>
-              <GraduationCap className="size-4" aria-hidden /> {label}
-            </ToggleChip>
-          ))}
-          {isStudent && (
-            <ToggleChip checked={hideIncompatible} onChange={setHideIncompatible}>
-              Hide "not a fit"
-            </ToggleChip>
-          )}
-        </div>
+        {showFilters && (
+          <div id="more-filters" className="space-y-3 border-t border-border pt-3">
+            <div className="flex flex-wrap gap-3">
+              <label className="sr-only" htmlFor="skill-filter">
+                Skill
+              </label>
+              <select id="skill-filter" className="input w-auto min-w-[160px] cursor-pointer" value={skill} onChange={(e) => setSkill(e.target.value)}>
+                <option value="">Any skill</option>
+                {meta?.skills.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+              <label className="sr-only" htmlFor="mode-filter">
+                Work mode
+              </label>
+              <select id="mode-filter" className="input w-auto cursor-pointer" value={mode} onChange={(e) => setMode(e.target.value)}>
+                <option value="">Remote or office</option>
+                <option value="remote">Remote</option>
+                <option value="hybrid">Hybrid</option>
+                <option value="onsite">At the office</option>
+              </select>
+              <label className="sr-only" htmlFor="sort">
+                Sort
+              </label>
+              <select id="sort" className="input w-auto cursor-pointer" value={sort} onChange={(e) => setSort(e.target.value)}>
+                {isStudent && <option value="match">Best fit first</option>}
+                <option value="recent">Newest first</option>
+                <option value="budget">Highest pay first</option>
+              </select>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <ToggleChip checked={verified} onChange={setVerified}>
+                <BadgeCheck className="size-4" aria-hidden /> University Verified
+              </ToggleChip>
+              <ToggleChip checked={mentoring} onChange={setMentoring}>
+                <Users className="size-4" aria-hidden /> With a mentor
+              </ToggleChip>
+              {Object.entries(ACADEMIC_LABEL).map(([k, label]) => (
+                <ToggleChip key={k} checked={academic === k} onChange={(v) => setAcademic(v ? k : "")}>
+                  <GraduationCap className="size-4" aria-hidden /> {label}
+                </ToggleChip>
+              ))}
+              {isStudent && (
+                <ToggleChip checked={hideIncompatible} onChange={setHideIncompatible}>
+                  Hide "Not a fit"
+                </ToggleChip>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <ErrorBox error={all.error} />

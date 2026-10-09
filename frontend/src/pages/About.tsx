@@ -1,4 +1,4 @@
-import { ArrowDown, Bot, Brain, Filter, ListOrdered, MessageSquareText, Network, Scale } from "lucide-react";
+import { ArrowDown, Bot, Brain, Filter, Heart, ListOrdered, MessageSquareText, Network, Scale } from "lucide-react";
 
 const STEPS = [
   {
@@ -27,9 +27,14 @@ const STEPS = [
     text: "Results are sorted (incompatible last) and shown with ✓/✗ per skill, checks and a plain-language summary. The score orders options; it is not a probability of success.",
   },
   {
+    icon: Heart,
+    title: "6 · Swipe to match",
+    text: "The ranked list becomes a card deck. Students swipe opportunities, companies swipe students (clear mismatches are left out). A right swipe stays private until the other side also swipes right: then it's a match and the chat opens. Applying counts as the student's yes and inviting as the company's, so swipes and the classic buttons work together. A match is a recommendation that both people accepted, not a hiring decision: the company still selects who does the work.",
+  },
+  {
     icon: Network,
-    title: "6 · Learning later",
-    text: "Every apply, invite, accept/decline, selection, completion and rating is logged. When enough real interactions exist, a learned ranker can be trained on them - starting rule-based avoids the cold-start problem. The optional Neo4j graph links students, skills and opportunities for analytics.",
+    title: "7 · Learning later",
+    text: "Every swipe, apply, invite, accept/decline, selection, completion and rating is logged. When enough real interactions exist, a learned ranker can be trained on them - starting rule-based avoids the cold-start problem. The optional Neo4j graph links students, skills and opportunities for analytics.",
   },
 ];
 

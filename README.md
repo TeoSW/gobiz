@@ -1,20 +1,31 @@
-# GoBiz
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/skillsync-logo-dark.svg">
+    <img src="docs/brand/skillsync-logo.svg" alt="SkillSync" width="420">
+  </picture>
+</p>
 
-GoBiz is a working prototype of a platform for **micro-projects, internships and jobs**. It sits somewhere between an internship, freelancing and practical learning. SMEs post small, well-scoped problems they cannot staff internally (a Power BI dashboard, cleaning up a customer database, automating an Excel report). Students take them on to earn money and experience, and every completed collaboration goes into a verified portfolio. Universities mentor, validate and see which skills companies are actually asking for.
+<p align="center"><b>Match făcut. Proiect început.</b></p>
 
-The central idea: instead of matching students with jobs, the platform matches **student skills with real company problems**. The matching algorithm **recommends, it never decides**: students can apply to any opportunity and companies can invite any student.
+# SkillSync
+
+SkillSync (formerly GoBiz) is a working prototype of a platform for **micro-projects, internships and jobs**. It sits somewhere between an internship, freelancing and practical learning. SMEs post small, well-scoped problems they cannot staff internally (a Power BI dashboard, cleaning up a customer database, automating an Excel report). Students take them on to earn money and experience, and every completed collaboration goes into a verified portfolio. Universities mentor, validate and see which skills companies are actually asking for.
+
+The central idea: instead of matching students with jobs, the platform matches **student skills with real company problems**. Students and companies **swipe right** on each other, Tinder-style; when both say yes it's a match and the chat opens. The matching algorithm **recommends, it never decides**: it orders the cards and explains each fit, students can still apply anywhere and companies can invite anyone.
 
 ```
 Company describes a problem -> LLM extracts tasks + skills -> company confirms
- -> AI Match recommends students | student applies | company invites
- -> selection -> work -> delivery -> payment (simulated) -> mutual reviews -> verified portfolio
+ -> the engine ranks who fits -> student swipes right | company swipes right (or applies / invites)
+ -> both said yes = match -> chat -> selection -> work -> delivery -> payment (simulated)
+ -> mutual reviews -> verified portfolio
 ```
 
 ## Presentation
 
-- [Slides (PDF, 15 pages)](docs/presentation/GoBiz-presentation.pdf)
-- [Demo video (1:45, WebM)](docs/presentation/GoBiz-demo.webm): student, company with the local AI, professor
-- Both are generated from the running app by [docs/presentation/make_presentation.py](docs/presentation/make_presentation.py) (Playwright, open source)
+- [Slides (PDF, 18 pages)](docs/presentation/SkillSync-presentation.pdf)
+- [Demo video (30 s, MP4, no captions)](docs/presentation/SkillSync-demo.mp4): student swipe and match, chat, the local AI reading a company's text, the company swiping, the professor's insights, dark mode
+- Both are generated from the running app by [docs/presentation/make_presentation.py](docs/presentation/make_presentation.py) (Playwright + ffmpeg, open source)
+- Brand: [logo (light)](docs/brand/skillsync-logo.svg), [logo (dark)](docs/brand/skillsync-logo-dark.svg), [mark](docs/brand/skillsync-mark.svg), traced to SVG from the original [PNG](docs/brand/skillsync-logo-original@2x.png)
 
 ## Contents
 
@@ -32,6 +43,13 @@ Company describes a problem -> LLM extracts tasks + skills -> company confirms
 ## Features
 
 **Three tabs:** Projects, Internships and Jobs. Each side declares what it is interested in. A year-2 student may want only the mandatory practice internship; another student may only want a project they can get course credit for.
+
+**Swipe matching (the Match page, for students and companies)**
+- Students get a card deck of open opportunities, best fit first; companies get a deck of students for all their open opportunities or for one of them. Clear mismatches ("Not a fit") are left out.
+- Drag the card (with *Yes* / *Pass* stamps), use the ✕ / ♥ buttons or the ← → keys. Undo brings back the last card.
+- A right swipe stays private. When the other side also swipes right: **"It's a match!"** (a short celebration with the logo), a ready-to-send first message, and the conversation appears in Messages.
+- Applying counts as the student's right swipe and inviting as the company's, so the classic buttons and the decks agree (a company that liked you + you apply = instant match).
+- A match is not a hiring decision: the company still selects who does the work (matches appear in a *Matches* tab next to Applicants and Invited).
 
 **Student**
 - Profile: university, faculty, year, courses, skills at levels 0-3 plus a separate "want to learn" flag, self-declared projects, availability (hours/week, period, remote/on-site/hybrid), goals (paid project, course credit, mandatory practice, thesis, internship, part-time or full-time job), domains of interest, GitHub/portfolio links.
@@ -55,7 +73,7 @@ Company describes a problem -> LLM extracts tasks + skills -> company confirms
 **Platform**
 - Light/dark toggle, responsive (375px to 1440px), keyboard navigation, visible focus, AA contrast, `prefers-reduced-motion` respected, table view for every chart.
 - A "System & AI status" page: is Ollama reachable, is the model downloaded, which embedding backend is active, is Neo4j connected, the current weights, demo reset.
-- Every interaction (view, apply, invite, accept/decline, selection, completion, rating) is logged in `interaction_events`, the training data for a future learned ranker.
+- Every interaction (view, swipe, match, apply, invite, accept/decline, selection, completion, rating) is logged in `interaction_events`, the training data for a future learned ranker.
 
 ## Technologies used
 
@@ -112,28 +130,37 @@ All components are **open source** and free. No paid services, no accounts, no e
 
 | Technology | License | Role |
 |---|---|---|
-| Docker Engine + Docker Compose | Apache-2.0 | orchestration: one project "gobiz" with 3 containers (+ Neo4j on demand) |
+| Docker Engine + Docker Compose | Apache-2.0 | orchestration: one project "skillsync" with 3 containers (+ Neo4j on demand) |
 | Node.js | 20, MIT | frontend build (only inside the image build stage) |
 
 > Note: **Docker Desktop** (the Windows app) is proprietary software, free for personal use, education and small businesses. The `docker-compose.yml` file works unchanged with open-source alternatives: **Podman Desktop** (Apache-2.0) or **Rancher Desktop** (Apache-2.0), or Docker Engine installed directly in WSL2.
 
+### Tooling (presentation and brand assets only, not part of the app)
+
+| Technology | License | Role |
+|---|---|---|
+| Playwright (Python) + Chromium | Apache-2.0 / BSD-3 | screenshots, PDF slides, screen recording for the demo video |
+| ffmpeg with libx264 (via imageio-ffmpeg) | GPL / BSD-2 | encoding the demo video to MP4 (H.264) |
+| potracer | GPL-2.0 | tracing the logo PNG into SVG paths (one-time) |
+| Pillow, NumPy | MIT-CMU / BSD-3 | preparing the logo image before tracing |
+
 ### Design
 
-The design system was generated with the ui-ux-pro-max skill and saved in [design-system/gobiz/MASTER.md](design-system/gobiz/MASTER.md): trust blue `#2563EB`, CTA orange, Plus Jakarta Sans, restrained glassmorphism (navigation and dialogs only), light theme by default plus a dark theme. Chart colors were checked with a palette validator (color-vision deficiency separation, contrast) in both themes.
+The design system was generated with the ui-ux-pro-max skill and saved in [design-system/skillsync/MASTER.md](design-system/skillsync/MASTER.md). The brand colors come from the SkillSync logo: navy `#0E2A47`, blue `#1D4E89` (primary) and light blue `#4A9BD4`, plus an orange CTA, Plus Jakarta Sans, restrained glassmorphism (navigation and dialogs only), light theme by default plus a dark theme (where the wordmark turns light). The logo is inline SVG ([frontend/src/components/Logo.tsx](frontend/src/components/Logo.tsx)), so it stays sharp at any size and follows the theme. Text color pairs are checked for AA contrast; chart colors were checked with a palette validator (color-vision deficiency separation, contrast) in both themes.
 
 ## Architecture
 
 ```
-  Docker project "gobiz"
+  Docker project "skillsync"
   ┌──────────────────────────────────────────────┐
-  │ gobiz-app  (:8080)                           │
+  │ skillsync-app  (:8080)                       │
   │   React UI (built)  +  FastAPI /api, /docs   │
-  │   llm/       extraction ──────────────────────┼──▶ gobiz-ollama (:11434)  qwen3:1.7b on the GPU
+  │   llm/       extraction ──────────────────────┼──▶ skillsync-ollama (:11434)  qwen3:1.7b on the GPU
   │   matching/  engine + embeddings (in-proc)   │
-  │   graph.py   optional ────────────────────────┼──▶ gobiz-neo4j (:7474/:7687)  only with --profile graph
+  │   graph.py   optional ────────────────────────┼──▶ skillsync-neo4j (:7474/:7687)  only with --profile graph
   └──────────────────────┬───────────────────────┘
                          ▼
-                 gobiz-mysql (:3307 on host)
+                 skillsync-mysql (:3307 on host)
 ```
 
 ### Why 3 containers and not 1
@@ -142,11 +169,18 @@ The app (UI + API) is already a single container: the Dockerfile builds React wi
 
 - they are official images, updated by their maintainers; folding them into one image means maintaining a database server and an LLM runtime by hand;
 - only Ollama needs the GPU; the GPU override applies to that container alone;
-- a code change rebuilds only `gobiz-app` (seconds to minutes), not the 9 GB Ollama image or the database;
+- a code change rebuilds only `skillsync-app` (seconds to minutes), not the 9 GB Ollama image or the database;
 - data and models live in their own volumes (`mysql_data`, `ollama_data`, `hf_models`), so containers can be recreated without losing anything;
 - one process per container keeps health checks, restarts and logs separate.
 
-In Docker Desktop all of them appear grouped under the **gobiz** project, with readable names (`gobiz-app`, `gobiz-mysql`, `gobiz-ollama`, `gobiz-neo4j`). `docker compose down` stops the whole project at once.
+In Docker Desktop all of them appear grouped under the **skillsync** project, with readable names (`skillsync-app`, `skillsync-mysql`, `skillsync-ollama`, `skillsync-neo4j`). `docker compose down` stops the whole project at once.
+
+Coming from the old **gobiz** project? Copy the model volumes instead of downloading them again (afterwards the old `gobiz_*` volumes can be removed with `docker volume rm`):
+
+```bash
+docker run --rm -v gobiz_ollama_data:/from:ro -v skillsync_ollama_data:/to --entrypoint sh mysql:8.4 -c "cp -a /from/. /to/"
+docker run --rm -v gobiz_hf_models:/from:ro -v skillsync_hf_models:/to --entrypoint sh mysql:8.4 -c "cp -a /from/. /to/"
+```
 
 Every AI component has a deterministic fallback, so the application works even when one of them is missing:
 
@@ -210,13 +244,15 @@ score = 100 × (0.50·skills + 0.25·experience + 0.15·interests + 0.10·semant
 ```
 
 - **skills:** weighted coverage of requirements (required ×2, optional ×1). Level met = 1; learnable + wants to learn = 0.5; optional skill below the level = proportional; related skill at the required level (catalog relations / knowledge graph) = 0.3.
-- **experience:** completed and verified GoBiz projects with overlapping skills or the same domain (weighted by rating) + self-declared projects (0.5 each), saturating at 2.
+- **experience:** completed and verified SkillSync projects with overlapping skills or the same domain (weighted by rating) + self-declared projects (0.5 each), saturating at 2.
 - **interests:** domain match + goal match (the opportunity offers course credit and the student wants course credit, and so on).
 - **semantic:** cosine similarity between `paraphrase-multilingual-MiniLM-L12-v2` embeddings. The model accepts at most 128 tokens, so texts are split into chunks of about 55 words; the score is the mean, over the opportunity's chunks, of the best match among the student's chunks. Vectors are cached in the DB (hash of text + model) and recomputed only when the text changes.
 
 **3. Explanation:** ✓ / ~ / ≈ / ✗ for each skill, checks (type, availability, period, mode, experience), the "to clarify" list and a plain-language summary. The interface states it explicitly: the score orders options, it is **not a probability of success**.
 
 **4. Ordering:** incompatible results last; "to clarify" results ranked by score next to "evaluated" ones. "Recommended for you" hides incompatible results and scores below 40; Explore shows everything.
+
+**5. Swipe decks** ([backend/app/routers/swipes.py](backend/app/routers/swipes.py)): the same ranking, as cards. The student deck holds open opportunities the student has not swiped or applied to (pending invitations included, marked "They invited you"); the company deck holds students not yet swiped for each open opportunity (pending applicants included, marked "Applied"). Incompatible pairs are not shown. Each side's swipe is a row in `swipes`; a right swipe checks whether the other side already said yes (a right swipe, an application or an invitation). If so, the pair becomes an `Application` with `kind = "match"`, which opens messaging and can be selected by the company.
 
 **Learning later:** the cold-start problem is avoided by starting with explainable rules. All interactions are logged in `interaction_events`; once enough real data exists, they can be used to adjust the weights or train a learned ranker.
 
@@ -286,15 +322,15 @@ The demo data is deliberately small: 2 students (Test Student and Maria Ionescu)
 The login is a **mockup**: the server checks the password (PBKDF2 hash), but afterwards the app identifies the user through the `X-User-Id` header, which any client could forge. Fine for a prototype, not for production.
 
 Things to try:
-- **Test Student:** the dashboard shows an invitation, a project in progress and the CV section. Open "Sales dashboard in Power BI" to see why the fit is high.
-- **Test SRL:** *Post an opportunity* -> *Fill with an example* (Romanian text) -> *Analyze with AI*. On "New design for our online shop" you can see Maria's application and select her.
+- **Test Student:** open **Match** and swipe right on "Sales dashboard in Power BI": Test SRL already liked you, so it's an instant match. The dashboard also shows an invitation, a project in progress and the CV section.
+- **Test SRL:** open **Match** and swipe right on Maria Ionescu (she applied to "New design for our online shop", so that's a match too). *Post an opportunity* -> *Fill with an example* (Romanian text) -> *Analyze with AI*. On "New design for our online shop" you can select her.
 - **Test Professor:** *Insights* (charts), the University Verified queue and a mentorship request from Test Student.
 
 ## Tests and evaluation
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -q                    # 37 tests: filters, scores, extraction, login, CV, full API flow
+.venv/Scripts/python -m pytest -q                    # 41 tests: filters, scores, extraction, login, CV, swipes, full API flow
 .venv/Scripts/python -m scripts.evaluate_matching    # precision@5 / recall@5 / MRR vs baselines
 ```
 
@@ -316,31 +352,34 @@ Semantic similarity alone ranks worse than the skill rules, which supports givin
 ## Project structure
 
 ```
-GoBiz/
+SkillSync/
 ├─ Dockerfile                  one image: builds React, then runs FastAPI serving UI + API
-├─ docker-compose.yml          project "gobiz": app, MySQL, Ollama, Neo4j (profile "graph")
+├─ docker-compose.yml          project "skillsync": app, MySQL, Ollama, Neo4j (profile "graph")
 ├─ docker-compose.gpu.yml      override: Ollama on an NVIDIA GPU
 ├─ .env.example
-├─ design-system/gobiz/        design system (ui-ux-pro-max)
+├─ design-system/skillsync/    design system (ui-ux-pro-max) + brand colors
+├─ docs/brand/                 logo: SVG light/dark, mark, original PNG
+├─ docs/presentation/          PDF slides, 30 s demo video and the script that makes them
 ├─ docs/superpowers/specs/     design spec
 ├─ backend/
 │  ├─ app/
 │  │  ├─ main.py               FastAPI app, startup (wait for DB, seed, embeddings, graph)
 │  │  ├─ config.py             settings from env
 │  │  ├─ models.py             SQLAlchemy: users, profiles, skills, opportunities, applications,
-│  │  │                         messages, reviews, mentorship, interaction_events
+│  │  │                         swipes, messages, reviews, mentorship, interaction_events
 │  │  ├─ skills_catalog.py     ~45 skills, RO/EN synonyms, relations, normalisation
 │  │  ├─ llm/                  schema, Ollama + heuristic providers, extraction + post-processing
 │  │  ├─ matching/             engine (pure), embeddings (chunking, cache), service (DB <-> engine)
 │  │  ├─ graph.py              Neo4j sync + queries with SQL fallback
-│  │  ├─ routers/              meta, ai, students, companies, opportunities, applications, messages, university
+│  │  ├─ routers/              meta, ai, students, companies, opportunities, applications, swipes, messages, university
 │  │  └─ seed.py               demo data
 │  ├─ scripts/evaluate_matching.py
 │  └─ tests/
 └─ frontend/
-   ├─ src/pages/               Home, Explore, OpportunityDetail, Student*, Company*, PostOpportunity,
-   │                            Talent, Messages, UniversityDashboard, SystemStatus, About
-   ├─ src/components/          Layout, Match (score + breakdown), OpportunityCard, Chat, Pipeline, ui
+   ├─ src/pages/               Home, Explore, Swipe (Match), OpportunityDetail, Student*, Company*,
+   │                            PostOpportunity, Talent, Messages, UniversityDashboard, SystemStatus, About
+   ├─ src/components/          Layout, Logo, SwipeDeck, MatchCta, Match (score + breakdown),
+   │                            OpportunityCard, Chat, Pipeline, ui
 ```
 
 ## API
@@ -357,6 +396,8 @@ Full interactive documentation: http://localhost:8080/docs (Docker) or http://lo
 | POST | `/api/opportunities/{id}/apply` · `/invite` · `/select` · `/status` · `/reviews` · `/mentorship` | student / company |
 | GET / PUT | `/api/students/me`, `/api/students/me/recommendations`, `POST` / `DELETE /api/students/me/cv` | student |
 | GET | `/api/students?skill=&min_level=&opportunity_id=` | company, university |
+| GET | `/api/swipe/student/deck` · `/api/swipe/company/deck?opportunity_id=` · `/api/swipe/matches` | student / company |
+| POST | `/api/swipe` (`{opportunity_id, student_id?, liked}`) · `/api/swipe/undo` | student, company |
 | GET / POST | `/api/messages/threads`, `/api/messages` | student, company |
 | GET | `/api/university/dashboard`, `/verification-queue`, `/mentorship` | university |
 | GET | `/api/system/status`, `/api/graph/skills/{id}` | all |
@@ -366,6 +407,7 @@ Full interactive documentation: http://localhost:8080/docs (Docker) or http://lo
 - **Authentication:** mock login with 3 test accounts. Next step: OIDC (e.g. Keycloak, Apache-2.0) and signed tokens instead of the `X-User-Id` header.
 - **Payment** is only a status (the company confirms payment). A real integration needs a payment provider and contracts.
 - **CV autofill:** the CV is stored and shown to companies, but not read yet. The "Fill from CV" button is ready for the same local LLM to extract skills, courses and projects for the student to confirm.
-- **Learned ranker:** once there are enough interactions, train a model (e.g. LightGBM LambdaRank, MIT) on `interaction_events` and compare it with the current engine using `evaluate_matching`.
+- **Learned ranker:** once there are enough interactions, train a model (e.g. LightGBM LambdaRank, MIT) on `interaction_events` (swipes give many cheap labels) and compare it with the current engine using `evaluate_matching`.
+- **Repository name:** the GitHub repository is still called `gobiz`; it can be renamed to `skillsync` in the repository settings (GitHub redirects the old URL).
 - **Full ESCO catalog:** the current catalog is small and ESCO-inspired; it can be extended with ESCO labels in Romanian.
 - **GDPR:** consent for processing, data retention, export/deletion of an account before going live.

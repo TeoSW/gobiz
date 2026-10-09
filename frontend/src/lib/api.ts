@@ -1,4 +1,4 @@
-const USER_KEY = "gobiz-user";
+const USER_KEY = "skillsync-user";
 
 export function getStoredUserId(): number | null {
   try {

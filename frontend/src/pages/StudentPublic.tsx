@@ -152,7 +152,7 @@ export default function StudentPublic() {
 
         {s.past_projects.length > 0 && (
           <div className="card p-6">
-            <SectionTitle sub="Not verified by GoBiz">Other projects</SectionTitle>
+            <SectionTitle sub="Not verified by SkillSync">Other projects</SectionTitle>
             <ul className="space-y-3">
               {s.past_projects.map((p) => (
                 <li key={p.id ?? p.title}>

@@ -2,6 +2,8 @@ export type Role = "student" | "company" | "university";
 export type OppType = "project" | "internship" | "job";
 export type OppStatus = "draft" | "open" | "in_progress" | "delivered" | "paid" | "completed" | "closed";
 export type MatchStatus = "evaluated" | "to_clarify" | "incompatible";
+/** application = the student applied, invitation = the company invited, match = both swiped right */
+export type AppKind = "application" | "invitation" | "match";
 
 export interface UserBrief {
   id: number;
@@ -97,7 +99,7 @@ export interface Opportunity {
   ai_extraction?: Extraction | null;
   verified_by?: UserBrief | null;
   is_owner?: boolean;
-  my_application?: { id: number; kind: "application" | "invitation"; status: string; created_at: string } | null;
+  my_application?: { id: number; kind: AppKind; status: string; created_at: string } | null;
   my_mentorship?: { status: string; mentor: UserBrief | null } | null;
   reviews?: ReviewOut[];
 }
@@ -200,19 +202,20 @@ export interface StudentCard {
 export interface CandidateCard {
   student: { id: number; name: string; headline: string; university: string; year: number; city: string };
   match: Match;
-  application: { id: number; kind: "application" | "invitation"; status: string; message: string; created_at: string } | null;
+  application: { id: number; kind: AppKind; status: string; message: string; created_at: string } | null;
 }
 
 export interface Candidates {
   ai_matches: CandidateCard[];
   applicants: CandidateCard[];
   invited: CandidateCard[];
+  matches: CandidateCard[];
   all_count: number;
 }
 
 export interface MyApplication {
   id: number;
-  kind: "application" | "invitation";
+  kind: AppKind;
   status: string;
   message: string;
   match_score: number | null;
@@ -241,6 +244,7 @@ export interface Thread {
   last: string;
   last_at: string;
   unread: number;
+  new_match?: boolean;
 }
 
 export interface ChatMessage {
@@ -310,3 +314,41 @@ export interface SkillGraph {
   students: number;
   opportunities: number;
 }
+
+// ---------------------------------------------------------------- swipe matching
+export type StudentDeckCard = Opportunity & { match: Match; invited: boolean };
+
+export interface CompanyDeckCard {
+  opportunity: { id: number; title: string; type: OppType };
+  student: {
+    id: number;
+    name: string;
+    headline: string;
+    university: string;
+    study_program: string;
+    year: number;
+    city: string;
+    bio: string;
+    hours_per_week: number;
+    work_mode: string;
+    top_skills: { skill_id: string; name: string; level: number }[];
+    learning: string[];
+    completed_projects: number;
+    rating: number | null;
+  };
+  match: Match;
+  applied: boolean;
+  application_message: string;
+}
+
+export interface MatchItem {
+  application_id: number;
+  status: string;
+  created_at: string;
+  match_score: number | null;
+  opportunity: { id: number; title: string; type: OppType; status: OppStatus };
+  student: UserBrief;
+  company: UserBrief;
+}
+
+export type SwipeResult = { matched: false } | { matched: true; match: MatchItem };

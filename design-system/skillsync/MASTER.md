@@ -6,7 +6,7 @@
 
 ---
 
-**Project:** GoBiz
+**Project:** SkillSync (renamed from GoBiz on 2026-10-09; slogan: "Match făcut. Proiect început.")
 **Generated:** 2026-10-04 11:47:52
 **Category:** SaaS (General)
 **Design Dials:** Variance 4/10 (Balanced / Modern) | Motion 3/10 (Subtle) | Density 6/10 (Standard)
@@ -19,9 +19,9 @@
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#2563EB` | `--color-primary` |
+| Primary | `#1D4E89` | `--color-primary` |
 | On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#3B82F6` | `--color-secondary` |
+| Secondary | `#4A9BD4` | `--color-secondary` |
 | On Secondary | `#000000` | `--color-on-secondary` |
 | Accent/CTA | `#EA580C` | `--color-accent` |
 | On Accent/CTA | `#000000` | `--color-on-accent` |
@@ -34,9 +34,11 @@
 | Border | `#E2E8F0` | `--color-border` |
 | Destructive | `#DC2626` | `--color-destructive` |
 | On Destructive | `#FFFFFF` | `--color-on-destructive` |
-| Ring | `#2563EB` | `--color-ring` |
+| Ring | `#1D4E89` | `--color-ring` |
 
-**Color Notes:** Trust blue + orange CTA contrast [Accent adjusted from #F97316]
+**Color Notes:** Brand blues from the SkillSync logo (navy `#0E2A47`, blue `#1D4E89`, light blue `#4A9BD4`) + orange CTA. Dark theme: primary `#2B6CB0`, text/links `#7CBBE8`, logo blue `#5FA8E0`. The original generated palette used trust blue `#1D4E89`.
+
+**Logo:** `frontend/src/components/logoPaths.ts` (traced from `docs/brand/skillsync-logo-original@2x.png`); light and dark SVGs in `docs/brand/`. The wordmark is "Skill" in navy (light theme) / near-white (dark theme) and "Sync" in blue.
 
 ### Typography
 
@@ -99,8 +101,8 @@
 /* Secondary Button */
 .btn-secondary {
   background: transparent;
-  color: #2563EB;
-  border: 2px solid #2563EB;
+  color: #1D4E89;
+  border: 2px solid #1D4E89;
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -139,9 +141,9 @@
 }
 
 .input:focus {
-  border-color: #2563EB;
+  border-color: #1D4E89;
   outline: none;
-  box-shadow: 0 0 0 3px #2563EB20;
+  box-shadow: 0 0 0 3px #1D4E8920;
 }
 ```
 

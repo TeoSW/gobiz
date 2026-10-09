@@ -88,7 +88,7 @@ class StudentSkill(Base):
 
 
 class PastProject(Base):
-    """Self-declared portfolio item (not verified by GoBiz)."""
+    """Self-declared portfolio item (not verified by SkillSync)."""
 
     __tablename__ = "past_projects"
 
@@ -164,7 +164,7 @@ class OpportunitySkill(Base):
 
 
 class Application(Base):
-    """Both student applications and company invitations live here (kind)."""
+    """Student applications, company invitations and swipe matches live here (kind)."""
 
     __tablename__ = "applications"
     __table_args__ = (UniqueConstraint("opportunity_id", "student_id"),)
@@ -172,7 +172,7 @@ class Application(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     opportunity_id: Mapped[int] = mapped_column(ForeignKey("opportunities.id"), index=True)
     student_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    kind: Mapped[str] = mapped_column(String(12))  # application / invitation
+    kind: Mapped[str] = mapped_column(String(12))  # application / invitation / match (both sides swiped right)
     # pending -> accepted / declined (invitation) ; pending -> selected / rejected (company decision) ; withdrawn
     status: Mapped[str] = mapped_column(String(12), default="pending")
     message: Mapped[str] = mapped_column(Text, default="")
@@ -181,6 +181,20 @@ class Application(Base):
 
     opportunity: Mapped[Opportunity] = relationship(lazy="joined")
     student: Mapped[User] = relationship(lazy="joined")
+
+
+class Swipe(Base):
+    """One side's swipe on a (student, opportunity) pair. Right on both sides = a match."""
+
+    __tablename__ = "swipes"
+    __table_args__ = (UniqueConstraint("opportunity_id", "student_id", "actor_role"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    opportunity_id: Mapped[int] = mapped_column(ForeignKey("opportunities.id"), index=True)
+    student_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    actor_role: Mapped[str] = mapped_column(String(10))  # student / company
+    liked: Mapped[bool] = mapped_column(Boolean)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class Message(Base):

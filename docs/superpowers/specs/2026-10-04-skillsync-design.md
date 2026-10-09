@@ -1,10 +1,10 @@
-# GoBiz: design spec (prototype v0.1)
+# SkillSync (formerly SkillSync): design spec (prototype v0.1, swipe matching added in v0.2)
 
 Date: 2026-10-04 · Status: approved (with changes) · UI language: English
 
 ## 1. Product
 
-GoBiz connects **student skills** with **real company problems**. It is not a job board:
+SkillSync connects **student skills** with **real company problems**. It is not a job board:
 companies (mostly SMEs) post small, well-bounded work, students build verified experience.
 
 Three opportunity tabs, each side declares what it is interested in:
@@ -75,7 +75,7 @@ Per (student, opportunity):
    `score = 100 × (0.50·skills + 0.25·experience + 0.15·interests + 0.10·semantic)`
    * *skills*: weighted requirement coverage (mandatory ×2). Met = 1, learnable+wants-to-learn = 0.5,
      related skill at the required level (knowledge graph / catalog relations) = 0.3.
-   * *experience*: verified completed GoBiz projects with overlapping skills/domain (1.0 each) + self-declared
+   * *experience*: verified completed SkillSync projects with overlapping skills/domain (1.0 each) + self-declared
      projects (0.5 each), saturating at 2; scaled by average rating when present.
    * *interests*: domain match + goal match (course credit, thesis, mandatory practice, paid project, job).
    * *semantic*: cosine similarity of embeddings. Texts are chunked (model limit 128 tokens): opportunity
@@ -108,7 +108,7 @@ level 0-3 + want-to-learn, interests/goals, availability, courses, projects, CV 
 Company dashboard · Post-opportunity wizard (describe → AI extraction → confirm skills → details → publish → instant
 recommendations) · Talent search + invite · Messages · University dashboard · System status (LLM / embeddings / graph).
 
-Visual: design-system/gobiz/MASTER.md: trust blue `#2563EB`, CTA orange `#EA580C`, Plus Jakarta Sans (self-hosted),
+Visual: design-system/skillsync/MASTER.md: brand blues from the logo (`#0E2A47`, `#1D4E89`, `#4A9BD4`; v0.1 used trust blue `#2563EB`), CTA orange `#EA580C`, Plus Jakarta Sans (self-hosted),
 light/dark toggle (light default), subtle glass on nav/modals only, lucide icons, AA contrast, visible focus,
 reduced-motion respected.
 
@@ -120,3 +120,17 @@ reduced-motion respected.
 
 ## 8. Out of scope
 Real payments, real auth, cloud file storage, learned ranking model, notifications/e-mail.
+
+
+## v0.2 (2026-10-09): SkillSync name and swipe matching
+
+* Name **SkillSync**, slogan **"Match făcut. Proiect început."**, logo from the brand file (two sync arrows + three growth bars).
+* **Swipe matching** (Tinder-style). Students get a deck of open opportunities ranked by the matching engine, companies get a deck of
+  students per open opportunity (or all of them). Clear mismatches (status `incompatible`) are not shown.
+  * Right = interested, left = skip. A right swipe stays private until the other side also swipes right.
+  * A pending application counts as the student's right swipe and a pending invitation as the company's, so the classic
+    buttons and the decks stay consistent (apply after a company's right swipe = instant match, and the other way round).
+  * Match = `Application(kind="match", status="accepted")`: it opens the chat (listed in Messages even before the first
+    message) and the company can select the student like any accepted application.
+  * Undo removes your last swipe unless it already produced a match.
+  * Swipes are stored in `swipes` (one row per side) and logged as interaction events (`swipe_right`, `swipe_left`, `match`).

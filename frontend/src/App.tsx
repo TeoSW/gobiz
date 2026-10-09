@@ -15,6 +15,7 @@ import PostOpportunity from "./pages/PostOpportunity";
 import StudentDashboard from "./pages/StudentDashboard";
 import StudentProfileEdit from "./pages/StudentProfileEdit";
 import StudentPublic from "./pages/StudentPublic";
+import SwipePage from "./pages/Swipe";
 import SystemStatusPage from "./pages/SystemStatus";
 import Talent from "./pages/Talent";
 
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="login" element={<Login />} />
         <Route path="explore" element={<Explore />} />
         <Route path="opportunities/:id" element={<OpportunityDetail />} />
+        <Route path="match" element={<RequireRole roles={["student", "company"]}><SwipePage /></RequireRole>} />
         <Route path="student" element={<RequireRole roles={["student"]}><StudentDashboard /></RequireRole>} />
         <Route path="student/profile" element={<RequireRole roles={["student"]}><StudentProfileEdit /></RequireRole>} />
         <Route path="students/:id" element={<RequireRole roles={["company", "university", "student"]}><StudentPublic /></RequireRole>} />

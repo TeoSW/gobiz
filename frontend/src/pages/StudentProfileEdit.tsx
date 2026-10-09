@@ -215,7 +215,7 @@ export default function StudentProfileEdit() {
         </div>
       </Section>
 
-      <Section title="Projects you have done" sub="From courses or your own. Projects you finish on GoBiz are added automatically.">
+      <Section title="Projects you have done" sub="From courses or your own. Projects you finish on SkillSync are added automatically.">
         <div className="space-y-4">
           {f.past_projects.map((p, i) => (
             <div key={i} className="space-y-3 rounded-xl border border-border p-4">

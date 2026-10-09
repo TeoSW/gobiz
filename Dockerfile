@@ -1,4 +1,4 @@
-# GoBiz app image: the React frontend is built with Node, then served by the FastAPI backend.
+# SkillSync app image: the React frontend is built with Node, then served by the FastAPI backend.
 # One container for UI + API; MySQL and Ollama run as their own official images (see docker-compose.yml).
 
 # ---- 1. build the frontend ----

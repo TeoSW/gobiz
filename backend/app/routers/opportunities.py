@@ -10,6 +10,7 @@ from ..models import Application, MentorshipRequest, Message, Opportunity, Oppor
 from ..schemas import ApplyIn, InviteIn, MentorshipIn, OpportunityIn, ReviewIn, SelectIn, StatusIn
 from ..serializers import iso, opportunity_out, user_brief
 from ..skills_catalog import SKILL_BY_ID
+from .swipes import liked_by
 
 router = APIRouter(prefix="/api/opportunities", tags=["opportunities"])
 
@@ -183,6 +184,7 @@ def candidates(opp_id: int, user: User = Depends(require_role("company")), db: S
         "ai_matches": [card(r["student_id"]) for r in ranked if r["status"] != "incompatible"][:12],
         "applicants": [card(a.student_id) for a in apps if a.kind == "application"],
         "invited": [card(a.student_id) for a in apps if a.kind == "invitation"],
+        "matches": [card(a.student_id) for a in apps if a.kind == "match"],
         "all_count": len(ranked),
     }
 
@@ -203,12 +205,15 @@ def apply(opp_id: int, body: ApplyIn, user: User = Depends(require_role("student
             db.commit()
             return {"id": existing.id, "kind": existing.kind, "status": existing.status}
         if existing.status != "withdrawn":
-            raise HTTPException(409, "You already applied")
+            raise HTTPException(409, "You already matched" if existing.kind == "match" else "You already applied")
         db.delete(existing)
         db.flush()
     a = Application(opportunity_id=o.id, student_id=user.id, kind="application", message=body.message, match_score=m["score"])
     db.add(a)
     log_event(db, "apply", user.id, user.id, o.id, m["score"])
+    if liked_by(db, o, user.id, "company"):  # the company already swiped right on this student
+        a.kind, a.status = "match", "accepted"
+        log_event(db, "match", user.id, user.id, o.id, m["score"])
     db.commit()
     return {"id": a.id, "kind": a.kind, "status": a.status}
 
@@ -228,6 +233,9 @@ def invite(opp_id: int, body: InviteIn, user: User = Depends(require_role("compa
     text = body.message.strip() or f"Hi {p.user.name.split()[0]}, we think you'd be a great fit for \"{o.title}\". Interested?"
     db.add(Message(opportunity_id=o.id, sender_id=user.id, recipient_id=p.user_id, body=text))
     log_event(db, "invite", user.id, p.user_id, o.id, m["score"])
+    if liked_by(db, o, p.user_id, "student"):  # the student already swiped right on this opportunity
+        a.kind, a.status = "match", "accepted"
+        log_event(db, "match", user.id, p.user_id, o.id, m["score"])
     db.commit()
     return {"id": a.id, "kind": a.kind, "status": a.status}
 

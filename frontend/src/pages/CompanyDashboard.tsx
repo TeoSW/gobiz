@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BadgeCheck, CheckCircle2, FolderOpen, Hourglass, Pencil, Plus, Star, Users } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { MatchCta } from "../components/MatchCta";
 import { StatusBadge, TypeBadge } from "../components/OpportunityCard";
 import { Badge, Empty, ErrorBox, Field, Modal, SectionTitle, Skeleton, StatCard, Stars, Tabs } from "../components/ui";
 import { api, put } from "../lib/api";
@@ -107,6 +108,8 @@ export default function CompanyDashboard() {
           sub={me.data?.ratings.count ? `from ${me.data.ratings.count} review${me.data.ratings.count === 1 ? "" : "s"}` : "no reviews yet"}
         />
       </div>
+
+      <MatchCta role="company" />
 
       <section>
         <SectionTitle

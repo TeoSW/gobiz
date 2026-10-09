@@ -107,8 +107,8 @@ function CandidateRow({ c, o, onChanged }: { c: CandidateCard; o: Opportunity; o
               {c.student.name}
             </Link>
             {a && (
-              <Badge tone={a.status === "selected" ? "success" : a.status === "declined" || a.status === "rejected" ? "danger" : "neutral"}>
-                {a.kind === "invitation" ? "Invited" : "Applied"} · {a.status}
+              <Badge tone={a.status === "selected" || a.kind === "match" ? "success" : a.status === "declined" || a.status === "rejected" ? "danger" : "neutral"}>
+                {a.kind === "match" ? "Matched" : `${a.kind === "invitation" ? "Invited" : "Applied"} · ${a.status}`}
               </Badge>
             )}
             {c.match.status === "to_clarify" && <Badge tone="warning">To clarify</Badge>}
@@ -157,13 +157,13 @@ function CandidateRow({ c, o, onChanged }: { c: CandidateCard; o: Opportunity; o
 
 function CandidatesPanel({ o }: { o: Opportunity }) {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"ai" | "applicants" | "invited">("ai");
+  const [tab, setTab] = useState<"ai" | "matches" | "applicants" | "invited">("ai");
   const cands = useQuery({ queryKey: ["candidates", o.id], queryFn: () => api<Candidates>(`/opportunities/${o.id}/candidates`) });
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["candidates", o.id] });
     qc.invalidateQueries({ queryKey: ["opp", String(o.id)] });
   };
-  const list = tab === "ai" ? cands.data?.ai_matches : tab === "applicants" ? cands.data?.applicants : cands.data?.invited;
+  const list = { ai: cands.data?.ai_matches, matches: cands.data?.matches, applicants: cands.data?.applicants, invited: cands.data?.invited }[tab];
   return (
     <section className="card p-5" aria-labelledby="cand-title">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -180,6 +180,7 @@ function CandidatesPanel({ o }: { o: Opportunity }) {
         onChange={setTab}
         tabs={[
           { id: "ai", label: <><Sparkles className="size-4" aria-hidden /> Suggested</>, count: cands.data?.ai_matches.length },
+          { id: "matches", label: "Matches", count: cands.data?.matches.length },
           { id: "applicants", label: "Applicants", count: cands.data?.applicants.length },
           { id: "invited", label: "Invited", count: cands.data?.invited.length },
         ]}
@@ -199,8 +200,8 @@ function CandidatesPanel({ o }: { o: Opportunity }) {
           ))}
         </ul>
       ) : (
-        <Empty title={tab === "applicants" ? "No applications yet" : tab === "invited" ? "No invitations yet" : "No compatible students yet"}>
-          {tab === "ai" ? "Try making some skills optional or learnable." : "You can invite students from the Suggested tab."}
+        <Empty title={{ ai: "No compatible students yet", matches: "No matches yet", applicants: "No applications yet", invited: "No invitations yet" }[tab]}>
+          {tab === "ai" ? "Try making some skills optional or learnable." : tab === "matches" ? "Swipe right on students on the Match page." : "You can invite students from the Suggested tab."}
         </Empty>
       )}
     </section>
@@ -306,8 +307,10 @@ function StudentPanel({ o }: { o: Opportunity }) {
           </>
         ) : app ? (
           <>
-            <h2 className="text-lg font-bold">{app.kind === "invitation" ? "You were invited" : "You applied"}</h2>
-            <p className="text-sm text-muted-fg">Status: <span className="font-semibold text-fg">{app.status}</span> · {shortDate(app.created_at)}</p>
+            <h2 className="text-lg font-bold">{app.kind === "match" ? "It's a match!" : app.kind === "invitation" ? "You were invited" : "You applied"}</h2>
+            <p className="text-sm text-muted-fg">
+              {app.kind === "match" ? "You and the company both said yes. Send them a message." : <>Status: <span className="font-semibold text-fg">{app.status}</span></>} · {shortDate(app.created_at)}
+            </p>
             {app.kind === "invitation" && app.status === "pending" && (
               <div className="flex gap-2">
                 <button className="btn-primary flex-1" onClick={() => respond.mutate("accept")}>

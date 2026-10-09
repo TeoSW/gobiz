@@ -12,7 +12,7 @@ from .config import get_settings
 from .db import SessionLocal, wait_for_db
 from .llm.providers import ensure_model_pulled
 from .matching.embeddings import embedder
-from .routers import ai, applications, auth, companies, messages, meta, opportunities, students, university
+from .routers import ai, applications, auth, companies, messages, meta, opportunities, students, swipes, university
 from .seed import ensure_seeded
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -32,8 +32,8 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="GoBiz API",
-    description="Micro-projects, internships and jobs matching students with SMEs. Matching is a recommendation, not a decision.",
+    title="SkillSync API",
+    description="Match făcut. Proiect început. Micro-projects, internships and jobs matching students with SMEs. Matching is a recommendation, not a decision.",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -43,7 +43,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-for r in (auth, meta, ai, students, companies, opportunities, applications, messages, university):
+for r in (auth, meta, ai, students, companies, opportunities, applications, messages, swipes, university):
     app.include_router(r.router)
 
 

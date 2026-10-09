@@ -1,26 +1,26 @@
-# GoBiz - full local stack (all components open source). In Docker Desktop it appears as one project: "gobiz".
+# SkillSync - full local stack (all components open source). In Docker Desktop it appears as one project: "skillsync".
 #   docker compose up --build                       -> app on http://localhost:8080 (API docs: /docs)
 #   docker compose --profile graph up --build       -> + Neo4j knowledge graph (http://localhost:7474)
 #   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up   -> Ollama on the NVIDIA GPU
 #
-# 3 containers: gobiz-app (React UI + FastAPI), gobiz-mysql (data), gobiz-ollama (local LLM).
-# The 4th, gobiz-neo4j, starts only with --profile graph.
+# 3 containers: skillsync-app (React UI + FastAPI), skillsync-mysql (data), skillsync-ollama (local LLM).
+# The 4th, skillsync-neo4j, starts only with --profile graph.
 
-name: gobiz
+name: skillsync
 
 services:
   app:
     build: .
-    container_name: gobiz-app
+    container_name: skillsync-app
     restart: unless-stopped
     environment:
-      DATABASE_URL: mysql+pymysql://gobiz:${MYSQL_PASSWORD:-gobiz}@mysql:3306/gobiz?charset=utf8mb4
+      DATABASE_URL: mysql+pymysql://skillsync:${MYSQL_PASSWORD:-skillsync}@mysql:3306/skillsync?charset=utf8mb4
       LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:1.7b}   # downloaded automatically on first start (~1.4 GB)
       EMBEDDINGS_BACKEND: ${EMBEDDINGS_BACKEND:-sentence-transformers}
       NEO4J_URI: ${NEO4J_URI:-}
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-gobiz-graph}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-skillsync-graph}
       UPLOAD_DIR: /app/uploads
     ports:
       - "8080:8000"
@@ -38,27 +38,27 @@ services:
 
   mysql:
     image: mysql:8.4
-    container_name: gobiz-mysql
+    container_name: skillsync-mysql
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: gobiz
-      MYSQL_USER: gobiz
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-gobiz}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-gobiz-root}
+      MYSQL_DATABASE: skillsync
+      MYSQL_USER: skillsync
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-skillsync}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-skillsync-root}
     command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     ports:
       - "3307:3306"   # 3307 on the host to avoid clashing with a local MySQL
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-gobiz-root}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-skillsync-root}"]
       interval: 5s
       timeout: 5s
       retries: 30
 
   ollama:
     image: ollama/ollama:latest
-    container_name: gobiz-ollama
+    container_name: skillsync-ollama
     restart: unless-stopped
     environment:
       OLLAMA_KEEP_ALIVE: 30m          # keep the model loaded between requests
@@ -71,11 +71,11 @@ services:
 
   neo4j:
     image: neo4j:5.26-community   # 5.26 LTS
-    container_name: gobiz-neo4j
+    container_name: skillsync-neo4j
     profiles: ["graph"]
     restart: unless-stopped
     environment:
-      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-gobiz-graph}
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-skillsync-graph}
       NEO4J_server_memory_heap_max__size: 1G   # fits next to everything else in 16 GB RAM
     ports:
       - "7474:7474"
@@ -83,7 +83,7 @@ services:
     volumes:
       - neo4j_data:/data
     healthcheck:
-      test: ["CMD-SHELL", "cypher-shell -u neo4j -p ${NEO4J_PASSWORD:-gobiz-graph} 'RETURN 1' || exit 1"]
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p ${NEO4J_PASSWORD:-skillsync-graph} 'RETURN 1' || exit 1"]
       interval: 10s
       timeout: 10s
       retries: 20

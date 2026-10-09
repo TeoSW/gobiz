@@ -133,3 +133,14 @@ class MentorshipIn(BaseModel):
 
 class MentorshipRespondIn(BaseModel):
     action: Literal["accept", "decline"]
+
+
+class SwipeIn(BaseModel):
+    opportunity_id: int
+    student_id: int | None = None  # companies say which student; for students it is always themselves
+    liked: bool
+
+
+class UndoSwipeIn(BaseModel):
+    opportunity_id: int
+    student_id: int | None = None

@@ -10,13 +10,13 @@ from datetime import date, timedelta
 from .db import Base, SessionLocal, engine
 from .models import (
     AppMeta, Application, CompanyProfile, MentorshipRequest, Message, Opportunity, OpportunitySkill, PastProject,
-    Review, Skill, StudentProfile, StudentSkill, User,
+    Review, Skill, StudentProfile, StudentSkill, Swipe, User,
 )
 from .security import hash_password
 from .skills_catalog import SKILLS
 
 # bump when the demo data or the schema changes: an older database is then re-created on startup
-SEED_VERSION = "2-demo-login"
+SEED_VERSION = "3-skillsync-swipe"
 
 R = dict  # requirement shorthand: R(s=skill, l=min_level, m=mandatory, learn=learnable)
 
@@ -148,13 +148,19 @@ PENDING = [
     ("intern", "test_student", "invitation", "pending", "Hi! Your profile fits our summer practice. Interested?"),
 ]
 
+# swipes made before the demo starts: (opportunity, student, who swiped, right?)
+# Test SRL already likes Test Student for the Power BI project, so her right swipe on it is an instant match.
+SWIPES = [
+    ("pbi", "test_student", "company", True),
+]
+
 # (opportunity, student, accepted by the professor?, note)
 MENTORSHIP = [
     ("autoreport", "test_student", False, "I would like help choosing between Python and Excel macros."),
 ]
 
 DEMO_DATA = dict(students=STUDENTS, companies=COMPANIES, university=UNIVERSITY, opportunities=OPPORTUNITIES,
-                 history=HISTORY, pending=PENDING, mentorship=MENTORSHIP, accounts=DEMO_ACCOUNTS)
+                 history=HISTORY, pending=PENDING, swipes=SWIPES, mentorship=MENTORSHIP, accounts=DEMO_ACCOUNTS)
 
 
 def _req(r: dict) -> OpportunitySkill:
@@ -225,7 +231,7 @@ def seed(db, data: dict | None = None) -> None:
     for _key, comp, stud, title, skills, domain, status, c_rating, s_rating in data["history"]:
         o = Opportunity(
             company_id=users[comp].id, type="project", title=title,
-            description=f"{title}. Completed through GoBiz." if status == "completed" else f"{title}.",
+            description=f"{title}. Completed through SkillSync." if status == "completed" else f"{title}.",
             tasks=[], domain=domain, difficulty=2, hours_per_week=8, duration_weeks=3, start_date=d(-90),
             deadline=d(-60) if status == "completed" else d(10), work_mode="remote", compensation_type="fixed",
             compensation_amount=1200, status=status, selected_student_id=users[stud].id,
@@ -253,6 +259,9 @@ def seed(db, data: dict | None = None) -> None:
         company = db.get(User, o.company_id)
         sender, recipient = (users[skey], company) if kind == "application" else (company, users[skey])
         db.add(Message(opportunity_id=o.id, sender_id=sender.id, recipient_id=recipient.id, body=msg))
+
+    for okey, skey, side, liked in data.get("swipes", []):
+        db.add(Swipe(opportunity_id=opps[okey].id, student_id=users[skey].id, actor_role=side, liked=liked))
 
     for okey, skey, accepted, note in data["mentorship"]:
         db.add(MentorshipRequest(opportunity_id=opps[okey].id, student_id=users[skey].id, note=note,

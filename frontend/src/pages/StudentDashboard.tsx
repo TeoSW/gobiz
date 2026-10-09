@@ -3,6 +3,7 @@ import { Award, BadgeCheck, Inbox, Mail, Sparkles, Star, UserPen } from "lucide-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CvUpload } from "../components/CvUpload";
+import { MatchCta } from "../components/MatchCta";
 import { OpportunityCard, StatusBadge, TypeBadge } from "../components/OpportunityCard";
 import { Badge, Empty, ErrorBox, SectionTitle, Skeleton, StatCard, Stars, Tabs } from "../components/ui";
 import { api, post } from "../lib/api";
@@ -13,7 +14,7 @@ export function PortfolioSummary({ s }: { s: Student }) {
   const p = s.portfolio;
   return (
     <div className="card p-5">
-      <SectionTitle sub="Projects finished on GoBiz and rated by the company">Your portfolio</SectionTitle>
+      <SectionTitle sub="Projects finished on SkillSync and rated by the company">Your portfolio</SectionTitle>
       {p.completed === 0 ? (
         <Empty icon={<Award className="size-8" />} title="No verified projects yet">
           Complete your first project to turn "I know Power BI" into proof.
@@ -92,6 +93,8 @@ export default function StudentDashboard() {
         <StatCard icon={<Star className="size-5" />} label="Your rating" value={s?.ratings.average?.toFixed(1) ?? "-"} sub={s ? `from ${s.ratings.count} review${s.ratings.count === 1 ? "" : "s"}` : undefined} />
         <StatCard icon={<Mail className="size-5" />} label="New invitations" value={apps.data ? invites.length : "-"} />
       </div>
+
+      <MatchCta role="student" />
 
       {s && !s.cv_filename && <CvUpload studentId={s.id} cvFilename="" />}
 
@@ -175,7 +178,7 @@ export default function StudentDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="card p-5" aria-labelledby="apps-title">
           <SectionTitle>
-            <span id="apps-title">My applications</span>
+            <span id="apps-title">Applications and matches</span>
           </SectionTitle>
           {pendingApps.length === 0 ? (
             <Empty icon={<Inbox className="size-8" />} title="No applications yet" />
@@ -188,12 +191,12 @@ export default function StudentDashboard() {
                       {a.opportunity.title}
                     </Link>
                     <p className="text-sm text-muted-fg">
-                      {a.opportunity.company.name} · {a.kind === "invitation" ? "invitation" : "applied"} {shortDate(a.created_at)}
+                      {a.opportunity.company.name} · {a.kind === "match" ? "matched" : a.kind === "invitation" ? "invitation" : "applied"} {shortDate(a.created_at)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     {a.match_score != null && <Badge tone="primary">{Math.round(a.match_score)}% match</Badge>}
-                    <Badge tone={a.status === "accepted" ? "success" : a.status === "rejected" || a.status === "declined" ? "danger" : "neutral"}>{a.status}</Badge>
+                    <Badge tone={a.status === "accepted" ? "success" : a.status === "rejected" || a.status === "declined" ? "danger" : "neutral"}>{a.kind === "match" ? "match" : a.status}</Badge>
                     {a.opportunity.status !== "open" && <StatusBadge status={a.opportunity.status} />}
                   </div>
                 </li>

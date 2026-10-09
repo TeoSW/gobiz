@@ -12,9 +12,9 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=(BACKEND_DIR / ".env", ".env"), env_file_encoding="utf-8", extra="ignore")
 
-    app_name: str = "GoBiz API"
+    app_name: str = "SkillSync API"
     # MySQL in Docker; SQLite is the zero-setup fallback for local dev and tests.
-    database_url: str = f"sqlite:///{(BACKEND_DIR / 'gobiz.db').as_posix()}"
+    database_url: str = f"sqlite:///{(BACKEND_DIR / 'skillsync.db').as_posix()}"
     seed_demo_data: bool = True
     upload_dir: str = str(BACKEND_DIR / "uploads")
     cors_origins: str = "http://localhost:5173,http://localhost:8080"
@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     # --- Optional knowledge graph -------------------------------------------------------------
     neo4j_uri: str = ""
     neo4j_user: str = "neo4j"
-    neo4j_password: str = "gobiz-graph"
+    neo4j_password: str = "skillsync-graph"
 
 
 @lru_cache

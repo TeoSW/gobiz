@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Building2, Check, FileText, GraduationCap, Handshake, School, Sparkles, Star } from "lucide-react";
+import { ArrowRight, Building2, Check, FileText, GraduationCap, Heart, School, Sparkles, Star, X } from "lucide-react";
 import { Link } from "react-router-dom";
+import { LogoMark, SLOGAN } from "../components/Logo";
 import { api } from "../lib/api";
 import { TYPE_PLURAL } from "../lib/format";
 import { homeFor, useSession } from "../lib/session";
@@ -8,9 +9,9 @@ import type { Opportunity, OppType, Role } from "../lib/types";
 
 const STEPS = [
   { icon: FileText, title: "A company describes a problem", text: "In plain words. AI turns it into a clear task list." },
-  { icon: Sparkles, title: "GoBiz suggests students", text: "Based on skills, time and experience. People decide." },
-  { icon: Handshake, title: "The student does the work", text: "With messages and a simple progress tracker." },
-  { icon: Star, title: "Both leave a review", text: "The finished project goes into the student's portfolio." },
+  { icon: Sparkles, title: "SkillSync shows who fits", text: "Based on skills, time and experience. People decide." },
+  { icon: Heart, title: "Both swipe right", text: "When the student and the company both say yes, it's a match." },
+  { icon: Star, title: "Work, then review", text: "The finished project goes into the student's portfolio." },
 ];
 
 const ROLES: { role: Role; icon: typeof GraduationCap; title: string; points: string[]; cta: string }[] = [
@@ -46,25 +47,20 @@ export default function Home() {
     <div className="space-y-16">
       <section className="grid items-center gap-10 pt-4 lg:grid-cols-[1.2fr_1fr]">
         <div className="animate-in">
-          <h1 className="text-4xl leading-[1.15] font-extrabold sm:text-5xl">
-            Real projects for students. <span className="text-primary-strong">Real help for small companies.</span>
-          </h1>
+          <p className="inline-flex items-center gap-2 rounded-full bg-primary-soft px-3 py-1 text-sm font-semibold text-primary-strong">
+            <LogoMark className="size-4" /> Projects · Internships · Jobs
+          </p>
+          <h1 className="mt-4 text-4xl leading-[1.1] font-extrabold sm:text-6xl">{SLOGAN}</h1>
           <p className="mt-5 max-w-xl text-lg text-muted-fg">
-            Companies post small projects, internships and jobs. Students do the work and build a portfolio. AI suggests who fits, but people decide.
+            Students and small companies swipe right on each other. When both say yes, it's a match and the work can start. AI shows who fits, people decide.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/explore" className="btn-primary px-5">
-              See opportunities <ArrowRight className="size-4" aria-hidden />
+            <Link to={!user ? "/login" : user.role === "university" ? homeFor(user.role) : "/match"} className="btn-primary px-5">
+              {user?.role === "university" ? "Go to my dashboard" : "Start matching"} <ArrowRight className="size-4" aria-hidden />
             </Link>
-            {user ? (
-              <Link to={homeFor(user.role)} className="btn-outline px-5">
-                Go to my dashboard
-              </Link>
-            ) : (
-              <Link to="/login" className="btn-outline px-5">
-                Log in
-              </Link>
-            )}
+            <Link to="/explore" className="btn-outline px-5">
+              See opportunities
+            </Link>
           </div>
           <dl className="mt-10 flex flex-wrap gap-10">
             {counts.map(({ t, n }) => (
@@ -76,23 +72,34 @@ export default function Home() {
           </dl>
         </div>
 
-        <div className="card animate-in p-6 [animation-delay:80ms]">
-          <p className="font-semibold text-muted-fg">Example</p>
-          <h2 className="mt-1 text-xl font-bold">Sales dashboard in Power BI</h2>
-          <p className="text-muted-fg">1,500 lei · 3 weeks · remote</p>
-          <div className="mt-5 flex items-center gap-4">
-            <div className="flex size-20 shrink-0 items-center justify-center rounded-full border-[6px] border-success text-xl font-extrabold text-success">92%</div>
-            <p className="text-lg">
-              <span className="font-bold text-success">Good fit</span> for this student, because:
-            </p>
+        <div className="animate-in relative mx-auto w-full max-w-sm [animation-delay:80ms]" aria-label="Example of a swipe card" role="img">
+          <div className="card absolute inset-0 translate-y-5 scale-[0.92] opacity-60" aria-hidden />
+          <div className="card absolute inset-0 translate-y-2.5 scale-[0.96] opacity-80" aria-hidden />
+          <div className="card relative rotate-3 p-6" aria-hidden>
+            <span className="absolute top-5 left-5 -rotate-12 rounded-lg border-4 border-success px-2 text-xl font-black text-success uppercase">Yes</span>
+            <p className="text-right text-sm font-semibold text-muted-fg">Test SRL · Project</p>
+            <h2 className="mt-6 text-xl font-bold">Sales dashboard in Power BI</h2>
+            <p className="text-muted-fg">1,500 lei · 3 weeks · remote</p>
+            <div className="mt-5 flex items-center gap-4">
+              <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-[6px] border-success text-lg font-extrabold text-success">92%</div>
+              <p className="text-lg font-bold text-success">Very good fit</p>
+            </div>
+            <ul className="mt-4 space-y-1.5">
+              {["Knows Power BI and Excel", "Has 20 hours a week free", "Did a similar project before"].map((t) => (
+                <li key={t} className="flex items-center gap-2">
+                  <Check className="size-5 text-success" aria-hidden /> {t}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6 flex justify-center gap-4">
+              <span className="inline-flex size-12 items-center justify-center rounded-full border-2 border-danger/40 text-danger">
+                <X className="size-6" />
+              </span>
+              <span className="inline-flex size-12 items-center justify-center rounded-full bg-success text-success-fg">
+                <Heart className="size-6 fill-current" />
+              </span>
+            </div>
           </div>
-          <ul className="mt-4 space-y-2">
-            {["Knows Power BI and Excel", "Has 20 hours a week free", "Did a similar project before"].map((s) => (
-              <li key={s} className="flex items-center gap-2">
-                <Check className="size-5 text-success" aria-hidden /> {s}
-              </li>
-            ))}
-          </ul>
         </div>
       </section>
 

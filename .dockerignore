@@ -7,8 +7,7 @@ backend/.venv
 **/__pycache__
 **/*.pyc
 **/.pytest_cache
-backend/gobiz.db
-backend/smoke.db
+backend/*.db
 backend/uploads
 backend/static
 **/.env

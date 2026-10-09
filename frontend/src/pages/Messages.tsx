@@ -23,7 +23,7 @@ export default function Messages() {
       <ErrorBox error={threads.error} />
       {list.length === 0 ? (
         <Empty icon={<MessageSquare className="size-8" />} title="No conversations yet">
-          Conversations start when you apply, invite or get selected for an opportunity.
+          Conversations start when you match, apply, invite or get selected for an opportunity.
         </Empty>
       ) : (
         <div className="grid gap-4 md:grid-cols-[320px_1fr]">
@@ -42,6 +42,7 @@ export default function Messages() {
                       <p className="flex items-center justify-between gap-2 text-sm font-semibold">
                         <span className="truncate">{t.with.name}</span>
                         {t.unread > 0 && <span className="rounded-full bg-accent px-1.5 text-[11px] font-bold text-accent-fg">{t.unread}</span>}
+                        {t.new_match && <span className="rounded-full bg-success-soft px-2 text-[11px] font-bold text-success">New match</span>}
                       </p>
                       <p className="truncate text-xs text-muted-fg">{t.opportunity.title}</p>
                       <p className="truncate text-sm text-muted-fg">{t.last}</p>

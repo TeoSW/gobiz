@@ -3,7 +3,8 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Design tokens - design-system/gobiz/MASTER.md (trust blue + orange CTA). AA contrast checked for text pairs. */
+/* Design tokens - design-system/skillsync/MASTER.md. Brand blues come from the SkillSync logo
+   (navy #0E2A47, blue #1D4E89, light blue #4A9BD4) + an orange CTA. AA contrast checked for text pairs. */
 :root {
   --bg: #f8fafc;
   --fg: #0f172a;
@@ -11,20 +12,25 @@
   --muted: #eef2f7;
   --muted-fg: #3d4a5c;
   --border: #e2e8f0;
-  --primary: #2563eb;
+  --primary: #1d4e89;
   --primary-fg: #ffffff;
-  --primary-soft: #dbeafe;
-  --primary-strong: #1d4ed8;
+  --primary-hover: #163d6c;
+  --primary-soft: #e3eff9;
+  --primary-strong: #1d4e89;
+  --logo-ink: #0e2a47;
+  --logo-blue: #1d4e89;
+  --logo-light: #4a9bd4;
   --accent: #c2410c;
   --accent-fg: #ffffff;
   --accent-soft: #ffedd5;
   --success: #15803d;
+  --success-fg: #ffffff;
   --success-soft: #dcfce7;
   --warning: #b45309;
   --warning-soft: #fef3c7;
   --danger: #dc2626;
   --danger-soft: #fee2e2;
-  --ring: #2563eb;
+  --ring: #1d4e89;
   --glass: rgb(255 255 255 / 0.72);
   --shadow: 0 1px 2px rgb(15 23 42 / 0.06), 0 4px 16px rgb(15 23 42 / 0.05);
   /* chart series (dataviz reference palette, validated light: CVD dE 24.7, contrast >= 3:1) */
@@ -35,32 +41,37 @@
 }
 
 .dark {
-  --bg: #0b1120;
+  --bg: #0a1628;
   --fg: #e5e7eb;
-  --card: #111a2e;
-  --muted: #1b2540;
+  --card: #0f2038;
+  --muted: #172a46;
   --muted-fg: #b8c2d4;
-  --border: #26324d;
-  --primary: #2563eb;
+  --border: #22395a;
+  --primary: #2b6cb0;
   --primary-fg: #ffffff;
-  --primary-soft: #172554;
-  --primary-strong: #93c5fd;
+  --primary-hover: #3178c6;
+  --primary-soft: #12305a;
+  --primary-strong: #7cbbe8;
+  --logo-ink: #f1f5f9;
+  --logo-blue: #5fa8e0;
+  --logo-light: #4a9bd4;
   --accent: #fb923c;
   --accent-fg: #1c0a00;
   --accent-soft: #431407;
   --success: #4ade80;
+  --success-fg: #052e16;
   --success-soft: #052e16;
   --warning: #fbbf24;
   --warning-soft: #422006;
   --danger: #f87171;
   --danger-soft: #450a0a;
-  --ring: #60a5fa;
-  --glass: rgb(11 17 32 / 0.72);
+  --ring: #5fa8e0;
+  --glass: rgb(10 22 40 / 0.72);
   --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.25);
-  /* dark steps validated against #111a2e: CVD dE 26.8, contrast >= 3:1 */
+  /* dark steps validated against the dark card: CVD dE 26.8, contrast >= 3:1 */
   --series-1: #3987e5;
   --series-2: #d95926;
-  --grid: #1f2a44;
+  --grid: #1c3150;
   color-scheme: dark;
 }
 
@@ -82,12 +93,14 @@
   --color-border: var(--border);
   --color-primary: var(--primary);
   --color-primary-fg: var(--primary-fg);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
   --color-primary-strong: var(--primary-strong);
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
   --color-accent-soft: var(--accent-soft);
   --color-success: var(--success);
+  --color-success-fg: var(--success-fg);
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
@@ -127,7 +140,7 @@ h1, h2, h3 {
   @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50;
 }
 @utility btn-primary {
-  @apply btn bg-primary text-primary-fg hover:bg-[#1d4ed8];
+  @apply btn bg-primary text-primary-fg hover:bg-primary-hover;
 }
 @utility btn-accent {
   @apply btn bg-accent text-accent-fg hover:brightness-110;
@@ -176,3 +189,20 @@ h1, h2, h3 {
 .animate-in {
   animation: fade-up 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
+
+/* swipe matching: the "It's a match!" celebration */
+@keyframes sync-spin {
+  from { transform: rotate(-270deg) scale(0.5); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes burst {
+  0% { transform: rotate(var(--a)) translateY(0) scale(0.4); opacity: 1; }
+  100% { transform: rotate(var(--a)) translateY(-150px) scale(1); opacity: 0; }
+}
+@keyframes pop-in {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.animate-sync { animation: sync-spin 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.animate-burst { animation: burst 1100ms cubic-bezier(0.1, 0.7, 0.3, 1) both; }
+.animate-pop { animation: pop-in 380ms cubic-bezier(0.2, 0.9, 0.3, 1.25) both; }

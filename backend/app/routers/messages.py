@@ -40,7 +40,21 @@ def threads(user: User = Depends(current_user), db: Session = Depends(get_db)):
                          "last_at": iso(m.created_at), "unread": 0}
         if m.recipient_id == user.id and not m.read:
             seen[key]["unread"] += 1
-    return list(seen.values())
+    # new swipe matches show up as conversations before anyone writes
+    new: list[dict] = []
+    q = db.query(Application).filter(Application.kind == "match")
+    if user.role == "student":
+        q = q.filter(Application.student_id == user.id)
+    else:
+        q = q.join(Opportunity, Application.opportunity_id == Opportunity.id).filter(Opportunity.company_id == user.id)
+    for a in q.order_by(Application.created_at.desc()):
+        o = a.opportunity
+        other = o.company_id if user.role == "student" else a.student_id
+        if (o.id, other) not in seen:
+            new.append({"opportunity": {"id": o.id, "title": o.title, "status": o.status},
+                        "with": user_brief(db.get(User, other)), "last": "New match! Say hello.",
+                        "last_at": iso(a.created_at), "unread": 0, "new_match": True})
+    return new + list(seen.values())
 
 
 @router.get("")

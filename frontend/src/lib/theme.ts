@@ -9,7 +9,7 @@ export function useTheme(): [Theme, () => void] {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     try {
-      localStorage.setItem("gobiz-theme", theme);
+      localStorage.setItem("skillsync-theme", theme);
     } catch {
       /* per-viewer convenience only */
     }

@@ -1,18 +1,4 @@
-from conftest import as_user
-
-
-def _new_opportunity(client, company_id: int) -> dict:
-    body = {
-        "type": "project", "title": "Inventory dashboard test", "domain": "retail",
-        "description": "Build an inventory dashboard in Power BI from our weekly Excel stock exports.",
-        "tasks": ["Model the stock data", "Build the dashboard"], "hours_per_week": 8, "duration_weeks": 2,
-        "compensation_type": "fixed", "compensation_amount": 1000,
-        "requirements": [{"skill_id": "power_bi", "min_level": 2, "mandatory": True},
-                         {"skill_id": "excel", "min_level": 1}],
-    }
-    r = client.post("/api/opportunities", json=body, headers=as_user(company_id))
-    assert r.status_code == 201, r.text
-    return r.json()
+from conftest import as_user, new_opportunity as _new_opportunity
 
 
 def test_demo_has_at_most_two_accounts_per_role(client):
@@ -147,9 +133,9 @@ def test_graph_sync_is_a_silent_noop_without_neo4j(client, caplog):
 
 
 def test_single_container_serves_frontend_and_api(client):
-    assert "GoBiz" in client.get("/").text
-    assert "GoBiz" in client.get("/university").text  # client-side route -> index.html
-    assert client.get("/assets/app.js").text == "console.log('gobiz')"
+    assert "SkillSync" in client.get("/").text
+    assert "SkillSync" in client.get("/university").text  # client-side route -> index.html
+    assert client.get("/assets/app.js").text == "console.log('skillsync')"
     assert client.get("/favicon.svg").text == "<svg/>"
     assert client.get("/api/does-not-exist").status_code == 404
     assert client.get("/api/health").json() == {"ok": True}

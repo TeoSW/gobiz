@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Building2, GraduationCap, LogIn, School } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { Logo } from "../components/Layout";
+import { Logo, SLOGAN } from "../components/Logo";
 import { ErrorBox, Field } from "../components/ui";
 import { api } from "../lib/api";
 import { homeFor, useSession } from "../lib/session";
@@ -64,7 +64,10 @@ export default function Login() {
           submit();
         }}
       >
-        <Logo />
+        <div>
+          <Logo />
+          <p className="mt-2 text-sm font-semibold text-muted-fg">{SLOGAN}</p>
+        </div>
         <div>
           <h1 className="text-2xl font-extrabold">Log in</h1>
           <p className="mt-1 text-muted-fg">Use one of the test accounts on the right.</p>

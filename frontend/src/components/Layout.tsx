@@ -7,17 +7,20 @@ import { api } from "../lib/api";
 import { useSession } from "../lib/session";
 import { useTheme } from "../lib/theme";
 import type { Role, Thread } from "../lib/types";
+import { Logo, SLOGAN } from "./Logo";
 import { Avatar } from "./ui";
 
 const NAV: Record<Role | "guest", { to: string; label: string }[]> = {
   guest: [{ to: "/explore", label: "Explore" }],
   student: [
     { to: "/explore", label: "Explore" },
+    { to: "/match", label: "Match" },
     { to: "/student", label: "Dashboard" },
     { to: "/student/profile", label: "My profile" },
   ],
   company: [
     { to: "/explore", label: "Explore" },
+    { to: "/match", label: "Match" },
     { to: "/company", label: "Dashboard" },
     { to: "/company/new", label: "Post opportunity" },
     { to: "/talent", label: "Talent" },
@@ -27,21 +30,6 @@ const NAV: Record<Role | "guest", { to: string; label: string }[]> = {
     { to: "/university", label: "Insights" },
   ],
 };
-
-export function Logo() {
-  return (
-    <Link to="/" className="flex items-center gap-2 rounded-lg font-extrabold tracking-tight" aria-label="GoBiz home">
-      <svg viewBox="0 0 32 32" className="size-8" aria-hidden>
-        <rect width="32" height="32" rx="8" fill="#2563EB" />
-        <path d="M21.5 11.5a7 7 0 1 0 1.2 7H16" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
-        <circle cx="23" cy="9" r="2.5" fill="#EA580C" />
-      </svg>
-      <span className="text-lg">
-        Go<span className="text-primary-strong">Biz</span>
-      </span>
-    </Link>
-  );
-}
 
 const ROLE_LABEL: Record<Role, string> = { student: "Student", company: "Company", university: "Professor" };
 
@@ -148,7 +136,9 @@ export function Layout() {
 
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted-fg sm:px-6">
-          <p>GoBiz prototype · connecting student skills with real company problems.</p>
+          <p>
+            <span className="font-semibold text-fg">{SLOGAN}</span> SkillSync prototype · student skills for real company problems.
+          </p>
           <nav className="flex gap-4" aria-label="Footer">
             <Link className="link" to="/system">
               System & AI status

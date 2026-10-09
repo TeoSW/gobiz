@@ -24,7 +24,7 @@ pull_state: dict = {"state": "idle", "error": None}
 class LLMProvider(Protocol):
     name: str
 
-    def extract(self, title: str, description: str, type_hint: str | None) -> Extraction: ...
+    def extract(self, title: str, description: str, type_hint: str | None, lang: str = "en") -> Extraction: ...
 
 
 class OllamaProvider:
@@ -53,11 +53,12 @@ class OllamaProvider:
         r = httpx.post(f"{self.url}/api/pull", json={"model": self.model, "stream": False}, timeout=None)
         r.raise_for_status()
 
-    def extract(self, title: str, description: str, type_hint: str | None) -> Extraction:
+    def extract(self, title: str, description: str, type_hint: str | None, lang: str = "en") -> Extraction:
+        system = SYSTEM_PROMPT.replace("{language}", "Romanian" if lang == "ro" else "English")
         user = f"Title: {title}\nType selected by the company: {type_hint or 'unknown'}\n\nDescription:\n{description}"
         payload = {
             "model": self.model,
-            "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user}],
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
             "format": EXTRACTION_JSON_SCHEMA,
             "stream": False,
             "think": False,  # Qwen3 thinking mode off: faster and the schema already constrains the output
@@ -94,15 +95,28 @@ _DOMAIN_CUES = {
     "education": ["scoala", "școală", "cursuri", "elevi", "education", "training"],
 }
 # skills commonly needed alongside others (used for *suggestions*, never mandatory)
+# skill found -> (suggested skill, reason in English, reason in Romanian)
 _SUGGEST_RULES = {
-    "dashboards": [("data_visualization", "Dashboards need clear visual design")],
-    "power_bi": [("data_cleaning", "Source data usually needs preparing before modelling"), ("sql", "Useful if data comes from a database")],
-    "web_scraping": [("python", "Most scrapers are written in Python"), ("data_cleaning", "Scraped data needs cleaning")],
-    "machine_learning": [("python", "Standard language for ML"), ("statistics", "Needed to evaluate models")],
-    "survey_design": [("statistics", "Needed to analyse survey results")],
-    "market_research": [("data_analysis", "Market research relies on data analysis")],
-    "process_automation": [("excel", "Automations often start from spreadsheets")],
-    "database_design": [("sql", "Databases are queried with SQL")],
+    "dashboards": [("data_visualization", "Dashboards need clear visual design", "Un dashboard are nevoie de grafice clare")],
+    "power_bi": [("data_cleaning", "Source data usually needs preparing before modelling",
+                  "Datele sursă trebuie de obicei pregătite înainte de modelare"),
+                 ("sql", "Useful if data comes from a database", "Util dacă datele vin dintr-o bază de date")],
+    "web_scraping": [("python", "Most scrapers are written in Python", "Majoritatea scraperelor sunt scrise în Python"),
+                     ("data_cleaning", "Scraped data needs cleaning", "Datele colectate trebuie curățate")],
+    "machine_learning": [("python", "Standard language for ML", "Limbajul standard pentru ML"),
+                         ("statistics", "Needed to evaluate models", "Necesară pentru evaluarea modelelor")],
+    "survey_design": [("statistics", "Needed to analyse survey results", "Necesară pentru analiza răspunsurilor")],
+    "market_research": [("data_analysis", "Market research relies on data analysis", "Studiile de piață se bazează pe analiza datelor")],
+    "process_automation": [("excel", "Automations often start from spreadsheets", "Automatizările pornesc des de la foi de calcul")],
+    "database_design": [("sql", "Databases are queried with SQL", "Bazele de date se interoghează cu SQL")],
+}
+
+_QUESTIONS = {
+    "deadline": ("What is the deadline or expected duration?", "Care este termenul sau durata estimată?"),
+    "budget": ("What is the budget / compensation?", "Care este bugetul / plata?"),
+    "data": ("How will the student access the data (export, anonymised sample, on-site)?",
+             "Cum va avea studentul acces la date (export, eșantion anonimizat, la sediu)?"),
+    "deliverable": ("What exactly should be delivered and in what format?", "Ce anume trebuie predat și în ce format?"),
 }
 
 
@@ -116,7 +130,8 @@ class HeuristicProvider:
 
     name = "heuristic"
 
-    def extract(self, title: str, description: str, type_hint: str | None) -> Extraction:
+    def extract(self, title: str, description: str, type_hint: str | None, lang: str = "en") -> Extraction:
+        ro = lang == "ro"
         text = f"{title}\n{description}"
         low = text.lower()
         sentences = _sentences(description) or [description]
@@ -138,9 +153,9 @@ class HeuristicProvider:
         have = {e.skill for e in explicit}
         suggested: list[SuggestedSkill] = []
         for e in explicit:
-            for sid, reason in _SUGGEST_RULES.get(e.skill, []):
+            for sid, reason_en, reason_ro in _SUGGEST_RULES.get(e.skill, []):
                 if sid not in have and sid not in {s.skill for s in suggested}:
-                    suggested.append(SuggestedSkill(skill=sid, min_level=1, reason=reason))
+                    suggested.append(SuggestedSkill(skill=sid, min_level=1, reason=reason_ro if ro else reason_en))
 
         tasks = [s.rstrip(".") for s in sentences if any(v in _strip(s) for v in _TASK_VERBS)][:8]
         if not tasks:
@@ -152,13 +167,13 @@ class HeuristicProvider:
 
         missing = []
         if not re.search(r"(termen|deadline|saptamani|săptămâni|weeks|zile|days|luni|months)", low):
-            missing.append("What is the deadline or expected duration?")
+            missing.append(_QUESTIONS["deadline"][ro])
         if not re.search(r"(lei|ron|eur|€|buget|budget|plata|plată|remunera|salary|salariu)", low):
-            missing.append("What is the budget / compensation?")
+            missing.append(_QUESTIONS["budget"][ro])
         if re.search(r"(date|data|baza|tranzac|fisier|fișier)", low) and not re.search(r"(acces|access|export|csv|xlsx|anonim)", low):
-            missing.append("How will the student access the data (export, anonymised sample, on-site)?")
+            missing.append(_QUESTIONS["data"][ro])
         if not re.search(r"(livr|deliver|predare|format|raport final|documenta)", low):
-            missing.append("What exactly should be delivered and in what format?")
+            missing.append(_QUESTIONS["deliverable"][ro])
 
         n_skills = len(explicit)
         difficulty = 3 if re.search(r"(machine learning|ml|model predictiv|deep|complex|avansat)", low) else 1 if n_skills <= 1 else 2

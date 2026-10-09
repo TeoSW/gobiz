@@ -6,9 +6,28 @@ import { Chat } from "../components/Chat";
 import { Avatar, Empty, ErrorBox, Spinner } from "../components/ui";
 import { api } from "../lib/api";
 import { timeAgo } from "../lib/format";
+import { texts, useTexts } from "../lib/i18n";
 import type { Thread } from "../lib/types";
 
+const T = texts(
+  {
+    title: "Messages",
+    none: "No conversations yet",
+    noneText: "Conversations start when you match, apply, invite or get selected for an opportunity.",
+    conversations: "Conversations",
+    newMatch: "New match",
+  },
+  {
+    title: "Mesaje",
+    none: "Încă nicio conversație",
+    noneText: "Conversațiile încep când ai un match, aplici, inviți pe cineva sau ești selectat pentru o oportunitate.",
+    conversations: "Conversații",
+    newMatch: "Match nou",
+  },
+);
+
 export default function Messages() {
+  const tx = useTexts(T);
   const [params, setParams] = useSearchParams();
   const threads = useQuery({ queryKey: ["threads"], queryFn: () => api<Thread[]>("/messages/threads"), refetchInterval: 10000 });
   const list = threads.data ?? [];
@@ -19,15 +38,15 @@ export default function Messages() {
   if (threads.isLoading) return <Spinner />;
   return (
     <div className="space-y-4">
-      <h1 className="text-3xl font-extrabold">Messages</h1>
+      <h1 className="text-3xl font-extrabold">{tx.title}</h1>
       <ErrorBox error={threads.error} />
       {list.length === 0 ? (
-        <Empty icon={<MessageSquare className="size-8" />} title="No conversations yet">
-          Conversations start when you match, apply, invite or get selected for an opportunity.
+        <Empty icon={<MessageSquare className="size-8" />} title={tx.none}>
+          {tx.noneText}
         </Empty>
       ) : (
         <div className="grid gap-4 md:grid-cols-[320px_1fr]">
-          <ul className="card max-h-[70vh] divide-y divide-border overflow-y-auto" aria-label="Conversations">
+          <ul className="card max-h-[70vh] divide-y divide-border overflow-y-auto" aria-label={tx.conversations}>
             {list.map((t) => {
               const selected = t.opportunity.id === o && t.with.id === u;
               return (
@@ -42,7 +61,7 @@ export default function Messages() {
                       <p className="flex items-center justify-between gap-2 text-sm font-semibold">
                         <span className="truncate">{t.with.name}</span>
                         {t.unread > 0 && <span className="rounded-full bg-accent px-1.5 text-[11px] font-bold text-accent-fg">{t.unread}</span>}
-                        {t.new_match && <span className="rounded-full bg-success-soft px-2 text-[11px] font-bold text-success">New match</span>}
+                        {t.new_match && <span className="rounded-full bg-success-soft px-2 text-[11px] font-bold text-success">{tx.newMatch}</span>}
                       </p>
                       <p className="truncate text-xs text-muted-fg">{t.opportunity.title}</p>
                       <p className="truncate text-sm text-muted-fg">{t.last}</p>

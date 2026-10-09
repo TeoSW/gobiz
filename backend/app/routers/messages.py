@@ -3,6 +3,7 @@ from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from ..db import get_db
+from ..i18n import tr
 from ..deps import current_user
 from ..models import Application, Message, Opportunity, User
 from ..schemas import MessageIn
@@ -52,7 +53,7 @@ def threads(user: User = Depends(current_user), db: Session = Depends(get_db)):
         other = o.company_id if user.role == "student" else a.student_id
         if (o.id, other) not in seen:
             new.append({"opportunity": {"id": o.id, "title": o.title, "status": o.status},
-                        "with": user_brief(db.get(User, other)), "last": "New match! Say hello.",
+                        "with": user_brief(db.get(User, other)), "last": tr("thread.new_match"),
                         "last_at": iso(a.created_at), "unread": 0, "new_match": True})
     return new + list(seen.values())
 

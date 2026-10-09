@@ -22,6 +22,7 @@ export interface SkillMeta {
 export interface Meta {
   skills: SkillMeta[];
   domains: string[];
+  domain_names?: Record<string, string>;
   goals: string[];
   types: OppType[];
 }
@@ -58,7 +59,7 @@ export interface Match {
   components: { skills: number; experience: number; interests: number; semantic: number | null };
   weights: { skills: number; experience: number; interests: number; semantic: number };
   skills: SkillRow[];
-  checks: { label: string; ok: boolean | null; detail?: string }[];
+  checks: { code: "type" | "availability" | "period" | "mode" | "experience"; label: string; ok: boolean | null; detail?: string }[];
   blockers: string[];
   to_clarify: string[];
   highlights: string[];

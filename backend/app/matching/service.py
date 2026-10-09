@@ -2,6 +2,7 @@
 
 from sqlalchemy.orm import Session
 
+from .. import i18n
 from ..config import get_settings
 from ..models import Opportunity, Review, StudentProfile
 from ..skills_catalog import SKILL_BY_ID, related_skills
@@ -91,7 +92,7 @@ def to_student_view(db: Session, p: StudentProfile) -> StudentView:
 def match_pair(db: Session, p: StudentProfile, o: Opportunity, weights_override: Weights | None = None) -> dict:
     sem = chunk_similarity(opportunity_vectors(db, o), student_vectors(db, p))
     return match(to_student_view(db, p), to_opportunity_view(o), semantic=sem, related=related_skills,
-                 weights=weights_override or weights())
+                 weights=weights_override or weights(), lang=i18n.lang())
 
 
 def rank_opportunities_for_student(db: Session, p: StudentProfile, opportunities: list[Opportunity]) -> list[dict]:
@@ -101,7 +102,7 @@ def rank_opportunities_for_student(db: Session, p: StudentProfile, opportunities
     results = []
     for o in opportunities:
         sem = chunk_similarity(opportunity_vectors(db, o), s_vec)
-        results.append(match(sv, to_opportunity_view(o), semantic=sem, related=related_skills, weights=w))
+        results.append(match(sv, to_opportunity_view(o), semantic=sem, related=related_skills, weights=w, lang=i18n.lang()))
     return sorted(results, key=rank_key)
 
 
@@ -112,6 +113,7 @@ def rank_students_for_opportunity(db: Session, o: Opportunity, students: list[St
     results = []
     for p in students:
         sem = chunk_similarity(o_vec, student_vectors(db, p))
-        results.append(match(to_student_view(db, p), ov, semantic=sem, related=related_skills, weights=w))
+        results.append(match(to_student_view(db, p), ov, semantic=sem, related=related_skills, weights=w,
+                             lang=i18n.lang()))
     return sorted(results, key=rank_key)
 

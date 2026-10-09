@@ -3,15 +3,54 @@ import clsx from "clsx";
 import { FileText, RefreshCw, Sparkles, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { api, getStoredUserId } from "../lib/api";
+import { texts, useTexts } from "../lib/i18n";
 import { Badge, ErrorBox } from "./ui";
 
 const ACCEPT = ".pdf,.doc,.docx,.odt";
 const MAX_MB = 5;
 
+const T = texts(
+  {
+    wrongType: "Please choose a PDF, DOC, DOCX or ODT file.",
+    tooBig: `The file is larger than ${MAX_MB} MB.`,
+    title: "Your CV",
+    sub: "Companies can open it from your profile.",
+    uploaded: "Uploaded",
+    open: "Open",
+    replace: "Replace",
+    remove: "Remove CV",
+    uploading: "Uploading...",
+    drop: "Drag your CV here, or click to choose a file",
+    formats: `PDF, DOC, DOCX or ODT, up to ${MAX_MB} MB`,
+    fillTitle: "Fill my profile from my CV",
+    soon: "Coming soon",
+    fillText: "AI will read your CV and fill in your skills, courses and projects. You check everything before saving.",
+    fillButton: "Fill from CV",
+  },
+  {
+    wrongType: "Alege un fișier PDF, DOC, DOCX sau ODT.",
+    tooBig: `Fișierul are mai mult de ${MAX_MB} MB.`,
+    title: "CV-ul tău",
+    sub: "Companiile îl pot deschide din profilul tău.",
+    uploaded: "Încărcat",
+    open: "Deschide",
+    replace: "Înlocuiește",
+    remove: "Șterge CV-ul",
+    uploading: "Se încarcă...",
+    drop: "Trage CV-ul aici sau apasă ca să alegi un fișier",
+    formats: `PDF, DOC, DOCX sau ODT, până la ${MAX_MB} MB`,
+    fillTitle: "Completează profilul din CV",
+    soon: "În curând",
+    fillText: "AI-ul va citi CV-ul și îți va completa abilitățile, materiile și proiectele. Tu verifici totul înainte de salvare.",
+    fillButton: "Completează din CV",
+  },
+);
+
 /** Original file name (the server stores it as cv_<userId>_<name>). */
 const displayName = (stored: string) => stored.split("_").slice(2).join("_") || stored;
 
 export function CvUpload({ studentId, cvFilename }: { studentId: number; cvFilename: string }) {
+  const t = useTexts(T);
   const qc = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -32,8 +71,8 @@ export function CvUpload({ studentId, cvFilename }: { studentId: number; cvFilen
     setLocalError(null);
     if (!file) return;
     const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-    if (!ACCEPT.split(",").includes(ext)) return setLocalError("Please choose a PDF, DOC, DOCX or ODT file.");
-    if (file.size > MAX_MB * 1024 * 1024) return setLocalError(`The file is larger than ${MAX_MB} MB.`);
+    if (!ACCEPT.split(",").includes(ext)) return setLocalError(t.wrongType);
+    if (file.size > MAX_MB * 1024 * 1024) return setLocalError(t.tooBig);
     upload.mutate(file);
   };
 
@@ -46,9 +85,9 @@ export function CvUpload({ studentId, cvFilename }: { studentId: number; cvFilen
     <section className="card space-y-4 p-6" aria-labelledby="cv-title">
       <div>
         <h2 id="cv-title" className="text-lg font-bold">
-          Your CV
+          {t.title}
         </h2>
-        <p className="text-muted-fg">Companies can open it from your profile.</p>
+        <p className="text-muted-fg">{t.sub}</p>
       </div>
 
       {cvFilename ? (
@@ -56,15 +95,15 @@ export function CvUpload({ studentId, cvFilename }: { studentId: number; cvFilen
           <FileText className="size-8 text-primary-strong" aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold">{displayName(cvFilename)}</p>
-            <p className="text-sm text-muted-fg">Uploaded</p>
+            <p className="text-sm text-muted-fg">{t.uploaded}</p>
           </div>
           <button type="button" className="btn-outline min-h-10" onClick={open}>
-            Open
+            {t.open}
           </button>
           <button type="button" className="btn-outline min-h-10" onClick={() => input.current?.click()} disabled={upload.isPending}>
-            <RefreshCw className="size-4" aria-hidden /> Replace
+            <RefreshCw className="size-4" aria-hidden /> {t.replace}
           </button>
-          <button type="button" className="btn-danger min-h-10" onClick={() => remove.mutate()} disabled={remove.isPending} aria-label="Remove CV">
+          <button type="button" className="btn-danger min-h-10" onClick={() => remove.mutate()} disabled={remove.isPending} aria-label={t.remove}>
             <Trash2 className="size-4" aria-hidden />
           </button>
         </div>
@@ -88,8 +127,8 @@ export function CvUpload({ studentId, cvFilename }: { studentId: number; cvFilen
           )}
         >
           <Upload className="size-8 text-primary-strong" aria-hidden />
-          <span className="font-semibold">{upload.isPending ? "Uploading..." : "Drag your CV here, or click to choose a file"}</span>
-          <span className="text-sm text-muted-fg">PDF, DOC, DOCX or ODT, up to {MAX_MB} MB</span>
+          <span className="font-semibold">{upload.isPending ? t.uploading : t.drop}</span>
+          <span className="text-sm text-muted-fg">{t.formats}</span>
         </button>
       )}
       <input ref={input} type="file" accept={ACCEPT} className="sr-only" tabIndex={-1} onChange={(e) => pick(e.target.files?.[0])} />
@@ -100,12 +139,12 @@ export function CvUpload({ studentId, cvFilename }: { studentId: number; cvFilen
         <Sparkles className="size-5 text-primary-strong" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="font-semibold">
-            Fill my profile from my CV <Badge tone="warning">Coming soon</Badge>
+            {t.fillTitle} <Badge tone="warning">{t.soon}</Badge>
           </p>
-          <p className="text-sm text-muted-fg">AI will read your CV and fill in your skills, courses and projects. You check everything before saving.</p>
+          <p className="text-sm text-muted-fg">{t.fillText}</p>
         </div>
-        <button type="button" className="btn-outline" disabled title="Coming soon">
-          Fill from CV
+        <button type="button" className="btn-outline" disabled title={t.soon}>
+          {t.fillButton}
         </button>
       </div>
     </section>

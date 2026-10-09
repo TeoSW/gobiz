@@ -9,7 +9,8 @@ from ..llm.providers import OllamaProvider, pull_state
 from ..matching.embeddings import embedder
 from ..models import STUDENT_GOALS, InteractionEvent, User
 from ..serializers import user_brief
-from ..skills_catalog import DOMAINS, SKILLS
+from ..i18n import domain_name, lang
+from ..skills_catalog import DOMAINS, SKILLS, skill_label
 
 router = APIRouter(prefix="/api", tags=["meta"])
 
@@ -51,8 +52,10 @@ def me(user: User = Depends(current_user)):
 @router.get("/meta")
 def meta():
     return {
-        "skills": [{"id": s["id"], "name": s["name"], "category": s["category"], "esco_hint": s["esco_hint"]} for s in SKILLS],
+        "skills": [{"id": s["id"], "name": skill_label(s["id"], lang()), "category": s["category"], "esco_hint": s["esco_hint"]}
+                   for s in SKILLS],
         "domains": DOMAINS,
+        "domain_names": {d: domain_name(d) for d in DOMAINS},
         "goals": list(STUDENT_GOALS),
         "types": ["project", "internship", "job"],
     }

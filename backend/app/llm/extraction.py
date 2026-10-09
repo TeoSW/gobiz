@@ -5,7 +5,7 @@ import re
 import time
 import unicodedata
 
-from ..skills_catalog import SKILL_BY_ID, normalize_skill
+from ..skills_catalog import normalize_skill, skill_label
 from .providers import HeuristicProvider, get_provider
 from .schema import Extraction
 
@@ -28,7 +28,13 @@ def _evidence_found(evidence: str, text: str) -> bool:
     return bool(words) and sum(w in src for w in words) / len(words) >= 0.7
 
 
-def postprocess(raw: Extraction, title: str, description: str) -> dict:
+NOT_VERBATIM = {
+    "en": "Not found verbatim in the text - downgraded to a suggestion",
+    "ro": "Nu apare exact în text - trecut la sugestii",
+}
+
+
+def postprocess(raw: Extraction, title: str, description: str, lang: str = "en") -> dict:
     text = f"{title}\n{description}"
     skills: dict[str, dict] = {}
     unrecognized: list[str] = []
@@ -44,13 +50,13 @@ def postprocess(raw: Extraction, title: str, description: str) -> dict:
             continue
         skills[sid] = {
             "skill_id": sid,
-            "name": SKILL_BY_ID[sid]["name"],
+            "name": skill_label(sid, lang),
             "min_level": item.min_level,
             # rule: only grounded, explicitly-required skills may start as mandatory
             "mandatory": bool(item.mandatory and grounded),
             "learnable": False,
             "source": source,
-            "note": item.evidence if grounded else "Not found verbatim in the text - downgraded to a suggestion",
+            "note": item.evidence if grounded else NOT_VERBATIM[lang],
         }
 
     for item in raw.skills_suggested:
@@ -62,7 +68,7 @@ def postprocess(raw: Extraction, title: str, description: str) -> dict:
             continue
         skills[sid] = {
             "skill_id": sid,
-            "name": SKILL_BY_ID[sid]["name"],
+            "name": skill_label(sid, lang),
             "min_level": item.min_level,
             "mandatory": False,  # rule: a suggestion is never mandatory automatically
             "learnable": True,
@@ -119,13 +125,14 @@ def merge_with_rules(llm: Extraction, rules: Extraction) -> Extraction:
     })
 
 
-def extract_requirements(title: str, description: str, type_hint: str | None = None) -> dict:
+def extract_requirements(title: str, description: str, type_hint: str | None = None, lang: str = "en") -> dict:
+    """lang: language for the generated parts (summary, tasks, questions, reasons); quotes stay as written."""
     provider = get_provider()
     started = time.perf_counter()
     fallback_reason = None
-    rules = HeuristicProvider().extract(title, description, type_hint)
+    rules = HeuristicProvider().extract(title, description, type_hint, lang)
     try:
-        raw = provider.extract(title, description, type_hint)
+        raw = provider.extract(title, description, type_hint, lang)
         used = provider.name
         if used != "heuristic":
             raw = merge_with_rules(raw, rules)
@@ -134,7 +141,7 @@ def extract_requirements(title: str, description: str, type_hint: str | None = N
         fallback_reason = f"{provider.name} unavailable: {str(exc)[:160]}"
         raw = rules
         used = "heuristic"
-    result = postprocess(raw, title, description)
+    result = postprocess(raw, title, description, lang)
     result.update(
         provider=used,
         model=getattr(provider, "model", None) if used != "heuristic" else None,

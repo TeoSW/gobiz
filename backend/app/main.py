@@ -2,12 +2,14 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exception_handlers import http_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import graph
+from . import graph, i18n
 from .config import get_settings
 from .db import SessionLocal, wait_for_db
 from .llm.providers import ensure_model_pulled
@@ -37,6 +39,7 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+app.add_middleware(i18n.LanguageMiddleware)  # Accept-Language: ro / en
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in get_settings().cors_origins.split(",") if o.strip()],
@@ -45,6 +48,13 @@ app.add_middleware(
 )
 for r in (auth, meta, ai, students, companies, opportunities, applications, messages, swipes, university):
     app.include_router(r.router)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def localized_http_exception(request: Request, exc: StarletteHTTPException):
+    """Error messages in the request language (Romanian or English)."""
+    exc.detail = i18n.translate_error(exc.detail)
+    return await http_exception_handler(request, exc)
 
 
 # ---------------------------------------------------------------- built React app (one container serves UI + API)

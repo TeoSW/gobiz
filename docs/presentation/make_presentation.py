@@ -33,6 +33,8 @@ BRAND = ROOT / "docs/brand"
 FONT = ROOT / "frontend/node_modules/@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-wght-normal.woff2"
 FONT_EXT = ROOT / "frontend/node_modules/@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-ext-wght-normal.woff2"
 VIDEO_SECONDS = 30
+# the app is bilingual (RO/EN); the script clicks English labels, so it always records the English UI
+ENGLISH_UI = "try { localStorage.setItem('skillsync-lang', 'en'); } catch (e) {}"
 
 
 def api(path: str, body: dict | None = None) -> dict:
@@ -64,6 +66,7 @@ def take_screenshots(browser) -> None:
     # the sticky header would cover the top of element screenshots
     ctx.add_init_script("document.addEventListener('DOMContentLoaded', () => { const s = document.createElement('style');"
                         " s.textContent = 'header { position: relative !important; }'; document.head.appendChild(s); })")
+    ctx.add_init_script(ENGLISH_UI)
     page = ctx.new_page()
 
     page.goto(BASE)
@@ -360,6 +363,7 @@ async def record_video(user_ids: dict[str, int]) -> Path:
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         ctx = await browser.new_context(viewport={"width": 1600, "height": 900}, device_scale_factor=1.2)
+        await ctx.add_init_script(ENGLISH_UI)
         await ctx.add_init_script(CURSOR_JS)
         page = await ctx.new_page()
         rec = Recorder(await ctx.new_cdp_session(page))

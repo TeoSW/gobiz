@@ -5,13 +5,71 @@ import { useSearchParams } from "react-router-dom";
 import { OpportunityCard } from "../components/OpportunityCard";
 import { Empty, ErrorBox, Skeleton, Tabs, ToggleChip } from "../components/ui";
 import { api } from "../lib/api";
-import { ACADEMIC_LABEL, TYPE_PLURAL } from "../lib/format";
+import { useFormat } from "../lib/format";
+import { texts, useTexts } from "../lib/i18n";
 import { useSession } from "../lib/session";
 import type { Opportunity, OppType } from "../lib/types";
 
 const TAB_ICON = { project: FolderKanban, internship: GraduationCap, job: Briefcase };
 
+const T = texts(
+  {
+    title: "Opportunities",
+    subStudent: "The percentage shows how well each one fits you. You can apply to any of them.",
+    subOther: "Projects, internships and jobs posted by companies.",
+    typeTabs: "Opportunity type",
+    search: "Search",
+    searchPlaceholder: "Search by title, company or skill",
+    hideFilters: "Hide filters",
+    moreFilters: "More filters",
+    skill: "Skill",
+    anySkill: "Any skill",
+    workMode: "Work mode",
+    anyMode: "Remote or office",
+    remote: "Remote",
+    hybrid: "Hybrid",
+    onsite: "At the office",
+    sort: "Sort",
+    bestFit: "Best fit first",
+    newest: "Newest first",
+    highestPay: "Highest pay first",
+    verified: "University Verified",
+    mentor: "With a mentor",
+    hideNotFit: 'Hide "Not a fit"',
+    none: (types: string) => `No ${types} match these filters`,
+    noneText: "Try removing a filter or searching for another skill.",
+  },
+  {
+    title: "Oportunități",
+    subStudent: "Procentul arată cât de bine ți se potrivește fiecare. Poți aplica la oricare.",
+    subOther: "Proiecte, stagii și joburi publicate de firme.",
+    typeTabs: "Tipul oportunității",
+    search: "Caută",
+    searchPlaceholder: "Caută după titlu, firmă sau abilitate",
+    hideFilters: "Ascunde filtrele",
+    moreFilters: "Mai multe filtre",
+    skill: "Abilitate",
+    anySkill: "Orice abilitate",
+    workMode: "Mod de lucru",
+    anyMode: "Remote sau la birou",
+    remote: "Remote",
+    hybrid: "Hibrid",
+    onsite: "La birou",
+    sort: "Ordonare",
+    bestFit: "Cele mai potrivite primele",
+    newest: "Cele mai noi primele",
+    highestPay: "Cele mai bine plătite primele",
+    verified: "Validat de universitate",
+    mentor: "Cu mentor",
+    hideNotFit: "Ascunde „Nu se potrivește”",
+    none: (types) => `Nu există ${types} pentru aceste filtre`,
+    noneText: "Încearcă să scoți un filtru sau să cauți altă abilitate.",
+  },
+);
+
 export default function Explore() {
+  const t = useTexts(T);
+  const f = useFormat();
   const { user, meta } = useSession();
   const [params, setParams] = useSearchParams();
   const type = (params.get("type") as OppType) || "project";
@@ -48,36 +106,32 @@ export default function Explore() {
         (!hideIncompatible || o.match?.status !== "incompatible"),
     );
   }, [all.data, q, hideIncompatible]);
-  const byType = (t: OppType) => filtered.filter((o) => o.type === t);
+  const byType = (ty: OppType) => filtered.filter((o) => o.type === ty);
   const items = byType(type);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold">Opportunities</h1>
-          <p className="mt-1 max-w-2xl text-muted-fg">
-            {isStudent
-              ? "The percentage shows how well each one fits you. You can apply to any of them."
-              : "Projects, internships and jobs posted by companies."}
-          </p>
+          <h1 className="text-3xl font-extrabold">{t.title}</h1>
+          <p className="mt-1 max-w-2xl text-muted-fg">{isStudent ? t.subStudent : t.subOther}</p>
         </div>
       </div>
 
       <Tabs
-        label="Opportunity type"
+        label={t.typeTabs}
         value={type}
-        onChange={(t) => setParams({ type: t })}
-        tabs={(["project", "internship", "job"] as OppType[]).map((t) => {
-          const Icon = TAB_ICON[t];
+        onChange={(ty) => setParams({ type: ty })}
+        tabs={(["project", "internship", "job"] as OppType[]).map((ty) => {
+          const Icon = TAB_ICON[ty];
           return {
-            id: t,
+            id: ty,
             label: (
               <>
-                <Icon className="size-4" aria-hidden /> {TYPE_PLURAL[t]}
+                <Icon className="size-4" aria-hidden /> {f.typesPlural[ty]}
               </>
             ),
-            count: all.data ? byType(t).length : undefined,
+            count: all.data ? byType(ty).length : undefined,
           };
         })}
       />
@@ -87,12 +141,12 @@ export default function Explore() {
           <div className="relative min-w-[220px] flex-1">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-fg" aria-hidden />
             <label htmlFor="search" className="sr-only">
-              Search
+              {t.search}
             </label>
-            <input id="search" className="input pl-9" placeholder="Search by title, company or skill" value={q} onChange={(e) => setQ(e.target.value)} />
+            <input id="search" className="input pl-9" placeholder={t.searchPlaceholder} value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <button type="button" className="btn-outline" onClick={() => setShowFilters((v) => !v)} aria-expanded={showFilters} aria-controls="more-filters">
-            <SlidersHorizontal className="size-4" aria-hidden /> {showFilters ? "Hide filters" : "More filters"}
+            <SlidersHorizontal className="size-4" aria-hidden /> {showFilters ? t.hideFilters : t.moreFilters}
             {activeFilters > 0 && <span className="rounded-full bg-primary px-1.5 text-xs text-primary-fg">{activeFilters}</span>}
           </button>
         </div>
@@ -100,10 +154,10 @@ export default function Explore() {
           <div id="more-filters" className="space-y-3 border-t border-border pt-3">
             <div className="flex flex-wrap gap-3">
               <label className="sr-only" htmlFor="skill-filter">
-                Skill
+                {t.skill}
               </label>
               <select id="skill-filter" className="input w-auto min-w-[160px] cursor-pointer" value={skill} onChange={(e) => setSkill(e.target.value)}>
-                <option value="">Any skill</option>
+                <option value="">{t.anySkill}</option>
                 {meta?.skills.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -111,38 +165,38 @@ export default function Explore() {
                 ))}
               </select>
               <label className="sr-only" htmlFor="mode-filter">
-                Work mode
+                {t.workMode}
               </label>
               <select id="mode-filter" className="input w-auto cursor-pointer" value={mode} onChange={(e) => setMode(e.target.value)}>
-                <option value="">Remote or office</option>
-                <option value="remote">Remote</option>
-                <option value="hybrid">Hybrid</option>
-                <option value="onsite">At the office</option>
+                <option value="">{t.anyMode}</option>
+                <option value="remote">{t.remote}</option>
+                <option value="hybrid">{t.hybrid}</option>
+                <option value="onsite">{t.onsite}</option>
               </select>
               <label className="sr-only" htmlFor="sort">
-                Sort
+                {t.sort}
               </label>
               <select id="sort" className="input w-auto cursor-pointer" value={sort} onChange={(e) => setSort(e.target.value)}>
-                {isStudent && <option value="match">Best fit first</option>}
-                <option value="recent">Newest first</option>
-                <option value="budget">Highest pay first</option>
+                {isStudent && <option value="match">{t.bestFit}</option>}
+                <option value="recent">{t.newest}</option>
+                <option value="budget">{t.highestPay}</option>
               </select>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <ToggleChip checked={verified} onChange={setVerified}>
-                <BadgeCheck className="size-4" aria-hidden /> University Verified
+                <BadgeCheck className="size-4" aria-hidden /> {t.verified}
               </ToggleChip>
               <ToggleChip checked={mentoring} onChange={setMentoring}>
-                <Users className="size-4" aria-hidden /> With a mentor
+                <Users className="size-4" aria-hidden /> {t.mentor}
               </ToggleChip>
-              {Object.entries(ACADEMIC_LABEL).map(([k, label]) => (
+              {Object.entries(f.academic).map(([k, label]) => (
                 <ToggleChip key={k} checked={academic === k} onChange={(v) => setAcademic(v ? k : "")}>
                   <GraduationCap className="size-4" aria-hidden /> {label}
                 </ToggleChip>
               ))}
               {isStudent && (
                 <ToggleChip checked={hideIncompatible} onChange={setHideIncompatible}>
-                  Hide "Not a fit"
+                  {t.hideNotFit}
                 </ToggleChip>
               )}
             </div>
@@ -158,8 +212,8 @@ export default function Explore() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <Empty icon={<Search className="size-8" />} title={`No ${TYPE_PLURAL[type].toLowerCase()} match these filters`}>
-          Try removing a filter or searching for another skill.
+        <Empty icon={<Search className="size-8" />} title={t.none(f.typesPlural[type].toLowerCase())}>
+          {t.noneText}
         </Empty>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

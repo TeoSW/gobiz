@@ -1,22 +1,42 @@
 import clsx from "clsx";
 import { Check } from "lucide-react";
-import { STATUS_LABEL } from "../lib/format";
+import { useFormat } from "../lib/format";
+import { texts, useTexts } from "../lib/i18n";
 import type { OppStatus } from "../lib/types";
 
 const STEPS: OppStatus[] = ["open", "in_progress", "delivered", "paid", "completed"];
-const HINT: Record<string, string> = {
-  open: "Recommend · apply · invite · select",
-  in_progress: "Student works on it",
-  delivered: "Student delivered",
-  paid: "Company confirmed payment",
-  completed: "Reviewed · in verified portfolio",
-};
+const T = texts(
+  {
+    hint: {
+      open: "Match · apply · invite · select",
+      in_progress: "Student works on it",
+      delivered: "Student delivered",
+      paid: "Company confirmed payment",
+      completed: "Reviewed · in verified portfolio",
+    } as Record<string, string>,
+    status: "Status",
+    progress: "Collaboration progress",
+  },
+  {
+    hint: {
+      open: "Match · aplicare · invitație · selecție",
+      in_progress: "Studentul lucrează",
+      delivered: "Studentul a predat",
+      paid: "Compania a confirmat plata",
+      completed: "Evaluat · în portofoliul verificat",
+    },
+    status: "Stare",
+    progress: "Progresul colaborării",
+  },
+);
 
 export function Pipeline({ status }: { status: OppStatus }) {
-  if (status === "closed" || status === "draft") return <p className="text-sm text-muted-fg">Status: {STATUS_LABEL[status]}</p>;
+  const t = useTexts(T);
+  const f = useFormat();
+  if (status === "closed" || status === "draft") return <p className="text-sm text-muted-fg">{t.status}: {f.status[status]}</p>;
   const idx = STEPS.indexOf(status);
   return (
-    <ol className="grid grid-cols-5 gap-1" aria-label="Collaboration progress">
+    <ol className="grid grid-cols-5 gap-1" aria-label={t.progress}>
       {STEPS.map((s, i) => (
         <li key={s} className="flex flex-col items-center text-center" aria-current={i === idx ? "step" : undefined}>
           <div className="flex w-full items-center">
@@ -31,8 +51,8 @@ export function Pipeline({ status }: { status: OppStatus }) {
             </span>
             <span className={clsx("h-0.5 flex-1", i === STEPS.length - 1 ? "bg-transparent" : i < idx ? "bg-primary" : "bg-border")} />
           </div>
-          <span className={clsx("mt-1.5 text-xs font-semibold", i === idx ? "text-fg" : "text-muted-fg")}>{STATUS_LABEL[s]}</span>
-          <span className="hidden text-[11px] leading-tight text-muted-fg lg:block">{HINT[s]}</span>
+          <span className={clsx("mt-1.5 text-xs font-semibold", i === idx ? "text-fg" : "text-muted-fg")}>{f.status[s]}</span>
+          <span className="hidden text-[11px] leading-tight text-muted-fg lg:block">{t.hint[s]}</span>
         </li>
       ))}
     </ol>

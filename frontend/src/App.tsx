@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { Empty, Spinner } from "./components/ui";
+import { texts, useTexts } from "./lib/i18n";
 import { useSession } from "./lib/session";
 import type { Role } from "./lib/types";
 import About from "./pages/About";
@@ -22,15 +23,26 @@ import Talent from "./pages/Talent";
 // charts (recharts) only load for the university role
 const UniversityDashboard = lazy(() => import("./pages/UniversityDashboard"));
 
+const T = texts(
+  { notForYou: "This page is not available for your account", otherAccount: "Log in with another test account to see it.", home: "Go home", notFound: "Page not found" },
+  { notForYou: "Pagina nu este disponibilă pentru contul tău", otherAccount: "Intră cu alt cont de test ca să o vezi.", home: "Mergi la prima pagină", notFound: "Pagina nu a fost găsită" },
+);
+
+function NotFound() {
+  const t = useTexts(T);
+  return <Empty title={t.notFound} action={<Link className="btn-primary" to="/">{t.home}</Link>} />;
+}
+
 function RequireRole({ roles, children }: { roles: Role[]; children: ReactNode }) {
+  const t = useTexts(T);
   const { user, ready } = useSession();
   const location = useLocation();
   if (!ready) return <Spinner />;
   if (!user) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname)}`} replace />;
   if (!roles.includes(user.role))
     return (
-      <Empty title="This page is not available for your account" action={<Link to="/" className="btn-primary">Go home</Link>}>
-        Log in with another test account to see it.
+      <Empty title={t.notForYou} action={<Link to="/" className="btn-primary">{t.home}</Link>}>
+        {t.otherAccount}
       </Empty>
     );
   return <>{children}</>;
@@ -55,7 +67,7 @@ export default function App() {
         <Route path="university" element={<RequireRole roles={["university"]}><Suspense fallback={<Spinner />}><UniversityDashboard /></Suspense></RequireRole>} />
         <Route path="system" element={<SystemStatusPage />} />
         <Route path="about" element={<About />} />
-        <Route path="*" element={<Empty title="Page not found" action={<Link className="btn-primary" to="/">Go home</Link>} />} />
+        <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
   );

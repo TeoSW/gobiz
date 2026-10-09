@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from .matching.service import verified_projects
 from .models import Application, CompanyProfile, Opportunity, Review, StudentProfile, User
-from .skills_catalog import SKILL_BY_ID
+from .i18n import lang
+from .skills_catalog import SKILL_BY_ID, skill_label
 
 
 def iso(d):
@@ -21,7 +22,8 @@ def user_brief(u: User | None) -> dict | None:
 
 
 def skill_name(sid: str) -> str:
-    return SKILL_BY_ID.get(sid, {}).get("name", sid)
+    """Skill display name in the request language."""
+    return skill_label(sid, lang())
 
 
 def rating_summary(db: Session, user_id: int) -> dict:
@@ -41,7 +43,7 @@ def rating_summary(db: Session, user_id: int) -> dict:
 
 def requirement_out(r) -> dict:
     sk = SKILL_BY_ID.get(r.skill_id, {})
-    return {"skill_id": r.skill_id, "name": sk.get("name", r.skill_id), "category": sk.get("category", "other"),
+    return {"skill_id": r.skill_id, "name": skill_name(r.skill_id), "category": sk.get("category", "other"),
             "min_level": r.min_level, "mandatory": r.mandatory, "learnable": r.learnable, "source": r.source}
 
 

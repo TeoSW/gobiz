@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
+import { LanguageProvider } from "./lib/i18n";
 import { SessionProvider } from "./lib/session";
 
 const queryClient = new QueryClient({
@@ -14,9 +15,11 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <SessionProvider>
-          <App />
-        </SessionProvider>
+        <LanguageProvider>
+          <SessionProvider>
+            <App />
+          </SessionProvider>
+        </LanguageProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

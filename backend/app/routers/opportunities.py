@@ -2,6 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .. import graph
+from ..i18n import tr
 from ..db import SessionLocal, get_db
 from ..deps import current_user, log_event, optional_user, require_role
 from ..matching.engine import rank_key
@@ -89,7 +90,8 @@ def list_opportunities(type: str | None = None, q: str = "", skill: str | None =
     if q.strip():
         needle = q.lower().strip()
         opps = [o for o in opps if needle in f"{o.title} {o.description} {o.company.name} {o.domain}".lower()
-                or any(needle in SKILL_BY_ID.get(r.skill_id, {}).get("name", "").lower() for r in o.skills)]
+                or any(needle in f"{SKILL_BY_ID.get(r.skill_id, {}).get('name', '')} {SKILL_BY_ID.get(r.skill_id, {}).get('name_ro', '')}".lower()
+                       for r in o.skills)]
 
     matches: dict[int, dict] = {}
     if user and user.role == "student":
@@ -230,7 +232,7 @@ def invite(opp_id: int, body: InviteIn, user: User = Depends(require_role("compa
     m = match_pair(db, p, o)
     a = Application(opportunity_id=o.id, student_id=p.user_id, kind="invitation", message=body.message, match_score=m["score"])
     db.add(a)
-    text = body.message.strip() or f"Hi {p.user.name.split()[0]}, we think you'd be a great fit for \"{o.title}\". Interested?"
+    text = body.message.strip() or tr("msg.invite", name=p.user.name.split()[0], title=o.title)
     db.add(Message(opportunity_id=o.id, sender_id=user.id, recipient_id=p.user_id, body=text))
     log_event(db, "invite", user.id, p.user_id, o.id, m["score"])
     if liked_by(db, o, p.user_id, "student"):  # the student already swiped right on this opportunity
@@ -258,7 +260,7 @@ def select_student(opp_id: int, body: SelectIn, bg: BackgroundTasks, user: User 
     o.selected_student_id = body.student_id
     o.status = "in_progress"
     db.add(Message(opportunity_id=o.id, sender_id=user.id, recipient_id=body.student_id,
-                   body=f"Good news - you have been selected for \"{o.title}\". Let's get started!"))
+                   body=tr("msg.selected", title=o.title)))
     log_event(db, "selected", user.id, body.student_id, o.id, a.match_score)
     db.commit()
     bg.add_task(_sync_graph_bg)

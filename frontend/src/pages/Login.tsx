@@ -2,9 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Building2, GraduationCap, LogIn, School } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { Logo, SLOGAN } from "../components/Logo";
+import { Logo, useSlogan } from "../components/Logo";
 import { ErrorBox, Field } from "../components/ui";
 import { api } from "../lib/api";
+import { texts, useTexts } from "../lib/i18n";
 import { homeFor, useSession } from "../lib/session";
 import type { Role } from "../lib/types";
 
@@ -15,13 +16,44 @@ interface DemoAccount {
   password: string;
 }
 
-const ROLE = {
-  student: { icon: GraduationCap, label: "Student" },
-  company: { icon: Building2, label: "Company" },
-  university: { icon: School, label: "Professor" },
-} as const;
+const ICON = { student: GraduationCap, company: Building2, university: School } as const;
+
+const T = texts(
+  {
+    roles: { student: "Student", company: "Company", university: "Professor" } as Record<Role, string>,
+    title: "Log in",
+    useTest: "Use one of the test accounts on the right.",
+    username: "Username",
+    password: "Password",
+    loggingIn: "Logging in...",
+    login: "Log in",
+    mock: "This is a demo login for the prototype, not a secure one.",
+    testAccounts: "Test accounts",
+    clickOne: "Click an account to log in with it.",
+    loginAs: (name: string, role: string) => `Log in as ${name} (${role})`,
+    user: "user",
+    pass: "password",
+  },
+  {
+    roles: { student: "Student", company: "Companie", university: "Profesor" },
+    title: "Intră în cont",
+    useTest: "Folosește unul dintre conturile de test din dreapta.",
+    username: "Utilizator",
+    password: "Parolă",
+    loggingIn: "Se intră în cont...",
+    login: "Intră în cont",
+    mock: "Este un login demonstrativ pentru prototip, nu unul securizat.",
+    testAccounts: "Conturi de test",
+    clickOne: "Apasă pe un cont ca să intri cu el.",
+    loginAs: (name, role) => `Intră ca ${name} (${role})`,
+    user: "utilizator",
+    pass: "parolă",
+  },
+);
 
 export default function Login() {
+  const t = useTexts(T);
+  const slogan = useSlogan();
   const { user, login } = useSession();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -66,39 +98,39 @@ export default function Login() {
       >
         <div>
           <Logo />
-          <p className="mt-2 text-sm font-semibold text-muted-fg">{SLOGAN}</p>
+          <p className="mt-2 text-sm font-semibold text-muted-fg">{slogan}</p>
         </div>
         <div>
-          <h1 className="text-2xl font-extrabold">Log in</h1>
-          <p className="mt-1 text-muted-fg">Use one of the test accounts on the right.</p>
+          <h1 className="text-2xl font-extrabold">{t.title}</h1>
+          <p className="mt-1 text-muted-fg">{t.useTest}</p>
         </div>
-        <Field label="Username" htmlFor="username">
+        <Field label={t.username} htmlFor="username">
           <input id="username" className="input" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required />
         </Field>
-        <Field label="Password" htmlFor="password">
+        <Field label={t.password} htmlFor="password">
           <input id="password" type="password" className="input" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </Field>
         <ErrorBox error={error} />
         <button className="btn-primary w-full" disabled={busy}>
-          <LogIn className="size-4" aria-hidden /> {busy ? "Logging in..." : "Log in"}
+          <LogIn className="size-4" aria-hidden /> {busy ? t.loggingIn : t.login}
         </button>
-        <p className="text-sm text-muted-fg">This is a demo login for the prototype, not a secure one.</p>
+        <p className="text-sm text-muted-fg">{t.mock}</p>
       </form>
 
       <section className="card space-y-4 p-8" aria-labelledby="demo-title">
         <h2 id="demo-title" className="text-lg font-bold">
-          Test accounts
+          {t.testAccounts}
         </h2>
-        <p className="text-muted-fg">Click an account to log in with it.</p>
+        <p className="text-muted-fg">{t.clickOne}</p>
         <ul className="space-y-3">
           {accounts.data?.map((a) => {
-            const Icon = ROLE[a.role].icon;
+            const Icon = ICON[a.role];
             return (
               <li key={a.username}>
                 <button
                   type="button"
                   onClick={() => submit(a.username, a.password)}
-                  aria-label={`Log in as ${a.name} (${ROLE[a.role].label})`}
+                  aria-label={t.loginAs(a.name, t.roles[a.role])}
                   className="flex w-full cursor-pointer items-center gap-4 rounded-xl border border-border p-4 text-left transition-colors hover:border-primary hover:bg-primary-soft/40"
                 >
                   <span className="rounded-xl bg-primary-soft p-2.5 text-primary-strong">
@@ -107,7 +139,7 @@ export default function Login() {
                   <span className="min-w-0 flex-1">
                     <span className="block font-bold">{a.name}</span>
                     <span className="block text-sm text-muted-fg">
-                      {ROLE[a.role].label} · user <code className="font-semibold text-fg">{a.username}</code> · password{" "}
+                      {t.roles[a.role]} · {t.user} <code className="font-semibold text-fg">{a.username}</code> · {t.pass}{" "}
                       <code className="font-semibold text-fg">{a.password}</code>
                     </span>
                   </span>

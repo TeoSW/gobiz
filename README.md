@@ -71,6 +71,7 @@ Company describes a problem -> LLM extracts tasks + skills -> company confirms
 - University Verified queue (approve/reject) and mentorship requests (accept/decline).
 
 **Platform**
+- **Romanian and English.** A RO | EN switch in the header (and in the footer and the mobile menu) changes the whole interface at once. The first visit follows the browser language; the choice is remembered. Texts produced by the server follow the same language: match explanations ("Îndeplinește 4 din 4 abilități..."), skill and domain names, error messages, the questions and reasons from the AI extraction, the automatic chat messages. Content written by people (titles, descriptions, messages, reviews) stays as written, so part of the demo data is in English and part in Romanian. The slogan is "Match făcut. Proiect început." in Romanian and "Match made. Project started." in English.
 - Light/dark toggle, responsive (375px to 1440px), keyboard navigation, visible focus, AA contrast, `prefers-reduced-motion` respected, table view for every chart.
 - A "System & AI status" page: is Ollama reachable, is the model downloaded, which embedding backend is active, is Neo4j connected, the current weights, demo reset.
 - Every interaction (view, swipe, match, apply, invite, accept/decline, selection, completion, rating) is logged in `interaction_events`, the training data for a future learned ranker.
@@ -330,7 +331,7 @@ Things to try:
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -q                    # 41 tests: filters, scores, extraction, login, CV, swipes, full API flow
+.venv/Scripts/python -m pytest -q                    # 45 tests: filters, scores, extraction, login, CV, swipes, languages, full API flow
 .venv/Scripts/python -m scripts.evaluate_matching    # precision@5 / recall@5 / MRR vs baselines
 ```
 
@@ -365,6 +366,7 @@ SkillSync/
 │  ├─ app/
 │  │  ├─ main.py               FastAPI app, startup (wait for DB, seed, embeddings, graph)
 │  │  ├─ config.py             settings from env
+│  │  ├─ i18n.py               Romanian / English texts of the API (Accept-Language), error translation
 │  │  ├─ models.py             SQLAlchemy: users, profiles, skills, opportunities, applications,
 │  │  │                         swipes, messages, reviews, mentorship, interaction_events
 │  │  ├─ skills_catalog.py     ~45 skills, RO/EN synonyms, relations, normalisation
@@ -378,13 +380,15 @@ SkillSync/
 └─ frontend/
    ├─ src/pages/               Home, Explore, Swipe (Match), OpportunityDetail, Student*, Company*,
    │                            PostOpportunity, Talent, Messages, UniversityDashboard, SystemStatus, About
+   ├─ src/lib/i18n.tsx         language switch; each component keeps its RO + EN texts next to it,
+   │                            checked by TypeScript (a missing Romanian text is a build error)
    ├─ src/components/          Layout, Logo, SwipeDeck, MatchCta, Match (score + breakdown),
    │                            OpportunityCard, Chat, Pipeline, ui
 ```
 
 ## API
 
-Full interactive documentation: http://localhost:8080/docs (Docker) or http://localhost:8000/docs (local development). After the mock login (`POST /api/auth/login`), the app identifies the user through the `X-User-Id` header.
+Full interactive documentation: http://localhost:8080/docs (Docker) or http://localhost:8000/docs (local development). After the mock login (`POST /api/auth/login`), the app identifies the user through the `X-User-Id` header. Every endpoint answers in Romanian with `Accept-Language: ro` and in English otherwise (only the generated texts change, never the data or the ranking).
 
 | Method | Route | Who |
 |---|---|---|

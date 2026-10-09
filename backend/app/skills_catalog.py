@@ -65,6 +65,20 @@ _RAW: list[tuple[str, str, str, str, list[str], list[str]]] = [
     ("communication", "Business Communication", "soft", "", ["comunicare", "presentation", "prezentare", "client communication"], []),
 ]
 
+# Romanian display names (skills not listed keep the same name in both languages, e.g. Excel, SQL, Python)
+NAME_RO = {
+    "vba": "Excel VBA / Macrocomenzi", "dashboards": "Dashboarduri și raportare", "data_visualization": "Vizualizarea datelor",
+    "data_analysis": "Analiza datelor", "data_cleaning": "Curățarea datelor", "database_design": "Proiectarea bazelor de date",
+    "etl": "ETL / Fluxuri de date", "statistics": "Statistică", "econometrics": "Econometrie",
+    "web_development": "Dezvoltare web", "backend_api": "Backend și API-uri", "mobile_development": "Dezvoltare mobilă",
+    "process_automation": "Automatizarea proceselor", "machine_learning": "Învățare automată (ML)",
+    "nlp_llm": "NLP / LLM-uri", "market_research": "Studii de piață", "survey_design": "Chestionare și analiza lor",
+    "financial_analysis": "Analiză financiară", "accounting": "Contabilitate", "digital_marketing": "Marketing digital",
+    "copywriting": "Copywriting și conținut", "project_management": "Managementul proiectelor",
+    "erp_crm": "Sisteme ERP / CRM", "ui_design": "Design UI/UX", "graphic_design": "Design grafic",
+    "english": "Engleză (profesională)", "communication": "Comunicare profesională",
+}
+
 DOMAINS = [
     "retail", "e-commerce", "finance", "banking", "manufacturing", "logistics", "healthcare", "education",
     "tourism", "agriculture", "real-estate", "marketing", "public-sector", "energy", "it-services", "hr",
@@ -78,15 +92,24 @@ def _norm(text: str) -> str:
 
 
 SKILLS: list[dict] = [
-    {"id": sid, "name": name, "category": cat, "esco_hint": esco, "synonyms": syns, "related": rel}
+    {"id": sid, "name": name, "name_ro": NAME_RO.get(sid, name), "category": cat, "esco_hint": esco, "synonyms": syns,
+     "related": rel}
     for sid, name, cat, esco, syns, rel in _RAW
 ]
 SKILL_BY_ID: dict[str, dict] = {s["id"]: s for s in SKILLS}
 
+
+def skill_label(skill_id: str, lang: str = "en") -> str:
+    """Display name in the given language (falls back to the id for unknown skills)."""
+    s = SKILL_BY_ID.get(skill_id)
+    if not s:
+        return skill_id
+    return s["name_ro"] if lang == "ro" else s["name"]
+
 # alias (normalised, diacritics removed) -> skill id
 _ALIASES: dict[str, str] = {}
 for _s in SKILLS:
-    for _alias in [_s["id"].replace("_", " "), _s["name"], *_s["synonyms"]]:
+    for _alias in [_s["id"].replace("_", " "), _s["name"], _s["name_ro"], *_s["synonyms"]]:
         _ALIASES.setdefault(_norm(_alias), _s["id"])
 
 

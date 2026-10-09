@@ -6,16 +6,15 @@ Pipeline (from the design discussion):
   3. explanation   -> per-skill status, checks, highlights, plain-language summary
 
 The score is a ranking aid, not a probability of success. Everything here is pure (no DB, no model)
-so it can be unit-tested and reused by the offline evaluation script.
+so it can be unit-tested and reused by the offline evaluation script. Texts come in English or Romanian (`lang`).
 """
 
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Callable
 
-from ..skills_catalog import SKILL_BY_ID
-
-LEVEL_NAMES = {0: "none", 1: "beginner", 2: "intermediate", 3: "advanced"}
+from ..i18n import domain_name, tr
+from ..skills_catalog import skill_label
 
 
 @dataclass
@@ -49,7 +48,7 @@ class OpportunityView:
 class ProjectRecord:
     skills: set[str]
     domain: str = ""
-    rating: float | None = None  # only for verified (GoBiz-completed) projects
+    rating: float | None = None  # only for verified (SkillSync-completed) projects
 
 
 @dataclass
@@ -77,8 +76,6 @@ class Weights:
     semantic: float = 0.10
 
 
-def _name(skill_id: str) -> str:
-    return SKILL_BY_ID.get(skill_id, {}).get("name", skill_id)
 
 
 def _opportunity_window(o: OpportunityView) -> tuple[date | None, date | None]:
@@ -98,7 +95,10 @@ def _goals_served(o: OpportunityView) -> set[str]:
     return served
 
 
-def _score_skills(s: StudentView, o: OpportunityView, related: Callable[[str], set[str]]):
+def _score_skills(s: StudentView, o: OpportunityView, related: Callable[[str], set[str]], lang: str):
+    def name(sid: str) -> str:
+        return skill_label(sid, lang)
+
     rows, blockers, clarify = [], [], []
     total_w = got = 0.0
     for req in o.requirements:
@@ -107,7 +107,7 @@ def _score_skills(s: StudentView, o: OpportunityView, related: Callable[[str], s
         declared = req.skill_id in s.skills
         level, wants = s.skills.get(req.skill_id, (None, False))
         row = {
-            "skill_id": req.skill_id, "name": _name(req.skill_id), "required_level": req.min_level,
+            "skill_id": req.skill_id, "name": name(req.skill_id), "required_level": req.min_level,
             "mandatory": req.mandatory, "learnable": req.learnable, "student_level": level, "wants_to_learn": wants,
         }
         via = next((r for r in related(req.skill_id) if s.skills.get(r, (0, False))[0] >= req.min_level), None)
@@ -119,25 +119,24 @@ def _score_skills(s: StudentView, o: OpportunityView, related: Callable[[str], s
         elif declared and req.mandatory:
             # a declared level below a required minimum is a hard filter (related skills cannot override it)
             credit, row["status"] = 0.0, "missing"
-            blockers.append(
-                f"{_name(req.skill_id)} required at {LEVEL_NAMES[req.min_level]} level (declared {LEVEL_NAMES[level]})"
-            )
+            blockers.append(tr("skill_below", lang, skill=name(req.skill_id), need=tr(f"level.{req.min_level}", lang),
+                               has=tr(f"level.{level}", lang)))
         elif declared and level > 0:
             credit, row["status"] = 0.5 * level / req.min_level, "below"
         elif via:
             credit, row["status"], row["via"] = 0.3, "related", via
             if req.mandatory:
-                clarify.append(f"Confirm {_name(req.skill_id)} level (knows related {_name(via)})")
+                clarify.append(tr("confirm_related", lang, skill=name(req.skill_id), via=name(via)))
         elif req.mandatory:
             credit, row["status"] = 0.0, "unknown"
-            clarify.append(f"{_name(req.skill_id)} is required but not declared in the profile")
+            clarify.append(tr("required_undeclared", lang, skill=name(req.skill_id)))
         else:
             credit, row["status"] = 0.0, "missing"
         got += w * credit
         rows.append(row)
 
     if not o.requirements:
-        clarify.append("The company has not listed required skills yet")
+        clarify.append(tr("no_requirements", lang))
         return 0.5, rows, blockers, clarify
     return got / total_w, rows, blockers, clarify
 
@@ -174,6 +173,7 @@ def match(
     semantic: float | None = None,
     related: Callable[[str], set[str]] = lambda _sid: set(),
     weights: Weights | None = None,
+    lang: str = "en",
 ) -> dict:
     w = weights or Weights()
     blockers: list[str] = []
@@ -182,36 +182,37 @@ def match(
 
     # 1. hard filters ---------------------------------------------------------------------
     type_ok = o.type in s.accepted_types
-    checks.append({"label": "Opportunity type", "ok": type_ok})
+    checks.append({"code": "type", "label": tr("check.type", lang), "ok": type_ok})
     if not type_ok:
-        blockers.append(f"Not looking for {o.type}s")
+        blockers.append(tr(f"not_looking.{o.type}", lang))
 
     hours_ok = s.hours_per_week >= o.hours_per_week
-    checks.append({"label": "Availability", "ok": hours_ok, "detail": f"{o.hours_per_week}h/week needed, {s.hours_per_week}h available"})
+    checks.append({"code": "availability", "label": tr("check.availability", lang), "ok": hours_ok,
+                   "detail": tr("detail.hours", lang, need=o.hours_per_week, has=s.hours_per_week)})
     if not hours_ok:
-        blockers.append(f"Needs {o.hours_per_week}h/week, available {s.hours_per_week}h/week")
+        blockers.append(tr("hours", lang, need=o.hours_per_week, has=s.hours_per_week))
 
     o_start, o_end = _opportunity_window(o)
     if o_start and o_end and s.available_from and s.available_to:
         period_ok = s.available_from <= o_end and o_start <= s.available_to
-        checks.append({"label": "Period", "ok": period_ok})
+        checks.append({"code": "period", "label": tr("check.period", lang), "ok": period_ok})
         if not period_ok:
-            blockers.append("Availability period does not overlap the opportunity period")
+            blockers.append(tr("period", lang))
 
     mode_ok: bool | None = True
     if o.work_mode == "onsite" and s.work_mode == "remote":
         mode_ok = False
-        blockers.append(f"On-site in {o.city or 'the company office'}, prefers remote only")
+        blockers.append(tr("onsite_city", lang, city=o.city) if o.city else tr("onsite", lang))
     elif o.work_mode == "hybrid" and s.work_mode == "remote":
         mode_ok = None
-        clarify.append("Hybrid role - confirm how many office days are needed")
+        clarify.append(tr("hybrid", lang))
     elif o.work_mode in ("onsite", "hybrid") and o.city and s.city and o.city.lower() != s.city.lower():
         mode_ok = None
-        clarify.append(f"Office in {o.city}, student based in {s.city}")
-    checks.append({"label": "Work mode", "ok": mode_ok})
+        clarify.append(tr("other_city", lang, office=o.city, student=s.city))
+    checks.append({"code": "mode", "label": tr("check.mode", lang), "ok": mode_ok})
 
     # 2. components -------------------------------------------------------------------------------
-    skills_score, skill_rows, skill_blockers, skill_clarify = _score_skills(s, o, related)
+    skills_score, skill_rows, skill_blockers, skill_clarify = _score_skills(s, o, related, lang)
     blockers += skill_blockers
     clarify += skill_clarify
     exp_score, n_verified, n_declared = _score_experience(s, o)
@@ -221,8 +222,8 @@ def match(
 
     total_w = w.skills + w.experience + w.interests + sem_weight
     score = 100 * (w.skills * skills_score + w.experience * exp_score + w.interests * int_score + sem_weight * sem_score) / total_w
-    checks.append({"label": "Similar experience", "ok": (n_verified + n_declared) > 0,
-                   "detail": f"{n_verified} verified, {n_declared} self-declared"})
+    checks.append({"code": "experience", "label": tr("check.experience", lang), "ok": (n_verified + n_declared) > 0,
+                   "detail": tr("detail.experience", lang, verified=n_verified, declared=n_declared)})
 
     status = "incompatible" if blockers else "to_clarify" if clarify else "evaluated"
 
@@ -232,24 +233,27 @@ def match(
         mark = {"met": "✓", "learnable": "~", "related": "≈", "below": "~"}.get(r["status"], "✗")
         highlights.append(f"{r['name']} {mark}")
     if hours_ok:
-        highlights.append("Availability ✓")
+        highlights.append(tr("hl.availability", lang))
     if n_verified + n_declared:
-        highlights.append("Similar experience ✓")
+        highlights.append(tr("hl.experience", lang))
     if goal_hits:
-        highlights.append("Goals ✓")
+        highlights.append(tr("hl.goals", lang))
 
     met = sum(r["status"] == "met" for r in skill_rows)
-    label = "Very good fit" if score >= 80 else "Good fit" if score >= 65 else "Possible fit" if score >= 50 else "Weak fit"
+    label = tr("label." + ("very_good" if score >= 80 else "good" if score >= 65 else "possible" if score >= 50 else "weak"), lang)
     # plain-language summary, read by both students and companies
     if status == "incompatible":
-        summary = "Not a fit right now: " + blockers[0][0].lower() + blockers[0][1:] + "."
+        first = blockers[0]
+        # "Not looking for jobs" -> "not looking for jobs", but skill names keep their capital ("Power BI ...")
+        reason = first if first in skill_blockers else first[0].lower() + first[1:]
+        summary = tr("summary.not_fit", lang, reason=reason)
     else:
-        parts = [f"Meets {met} of {len(skill_rows)} skills"]
+        parts = [tr("summary.meets", lang, met=met, total=len(skill_rows))]
         n_similar = n_verified + n_declared
         if n_similar:
-            parts.append(f"has done {n_similar} similar project{'s' if n_similar > 1 else ''}")
+            parts.append(tr("summary.similar.1", lang) if n_similar == 1 else tr("summary.similar.n", lang, n=n_similar))
         if domain_hit:
-            parts.append(f"interested in {o.domain}")
+            parts.append(tr("summary.domain", lang, domain=domain_name(o.domain, lang)))
         summary = ", ".join(parts) + "."
 
     return {

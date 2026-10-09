@@ -34,7 +34,8 @@ EXTRACTION_JSON_SCHEMA = Extraction.model_json_schema()
 SYSTEM_PROMPT = """You extract requirements from a company's description of a small project, internship or job
 on a platform that matches university students with SMEs. The text may be in Romanian or English.
 Return ONLY JSON matching the schema. Rules:
-- tasks: concrete, short work items (max 6), in English. Only what the text implies; no generic filler.
+- summary, tasks, missing_info and reasons: write them in {language}.
+- tasks: concrete, short work items (max 6). Only what the text implies; no generic filler.
 - skills_explicit: only skills/tools the text actually mentions. evidence must be an exact quote from the text.
   mandatory=true only if the text says it is required/obligatoriu/must.
 - skills_suggested: skills that are clearly useful but NOT mentioned. Never mark them mandatory.

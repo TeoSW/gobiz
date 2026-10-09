@@ -1,3 +1,5 @@
+import { getLang } from "./i18n";
+
 const USER_KEY = "skillsync-user";
 
 export function getStoredUserId(): number | null {
@@ -32,6 +34,7 @@ export const setApiUser = (id: number | null) => {
 export async function api<T>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (currentUserId != null) headers.set("X-User-Id", String(currentUserId));
+  headers.set("Accept-Language", getLang()); // the API answers in the same language (explanations, errors)
   let body = init.body;
   if (init.json !== undefined) {
     headers.set("Content-Type", "application/json");

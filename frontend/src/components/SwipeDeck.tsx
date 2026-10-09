@@ -1,6 +1,12 @@
 import clsx from "clsx";
 import { Heart, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { texts, useTexts } from "../lib/i18n";
+
+const TX = texts(
+  { yes: "Yes", pass: "Pass", actions: "Swipe actions", undo: "Undo last swipe", undoShort: "Undo", passKey: "Pass (left arrow key)", rightKey: "right arrow key", hint: "Drag the card or use the arrow keys ← →" },
+  { yes: "Da", pass: "Nu", actions: "Acțiuni swipe", undo: "Anulează ultimul swipe", undoShort: "Anulează", passKey: "Nu acum (săgeata stânga)", rightKey: "săgeata dreapta", hint: "Trage cardul sau folosește săgețile ← →" },
+);
 
 export type Direction = "left" | "right";
 
@@ -19,6 +25,7 @@ interface Props<T> {
 
 /** Tinder-style card stack: drag the top card, or use the buttons / arrow keys. */
 export function SwipeDeck<T>({ cards, cardKey, render, onSwipe, onUndo, canUndo, likeLabel }: Props<T>) {
+  const tx = useTexts(TX);
   const [drag, setDrag] = useState({ x: 0, y: 0, active: false });
   const [leaving, setLeaving] = useState<Direction | null>(null);
   const start = useRef<{ x: number; y: number; t: number } | null>(null);
@@ -107,14 +114,14 @@ export function SwipeDeck<T>({ cards, cardKey, render, onSwipe, onUndo, canUndo,
                       style={{ opacity: like }}
                       aria-hidden
                     >
-                      Yes
+                      {tx.yes}
                     </span>
                     <span
                       className="pointer-events-none absolute top-6 right-5 rotate-12 rounded-xl border-4 border-danger px-3 py-1 text-3xl font-black tracking-wider text-danger uppercase"
                       style={{ opacity: nope }}
                       aria-hidden
                     >
-                      Pass
+                      {tx.pass}
                     </span>
                   </>
                 )}
@@ -124,14 +131,14 @@ export function SwipeDeck<T>({ cards, cardKey, render, onSwipe, onUndo, canUndo,
           .reverse()}
       </div>
 
-      <div className="flex items-center gap-5" role="group" aria-label="Swipe actions">
+      <div className="flex items-center gap-5" role="group" aria-label={tx.actions}>
         <button
           type="button"
           onClick={onUndo}
           disabled={!canUndo || !!leaving}
           className="inline-flex size-12 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-warning shadow-card transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40"
-          aria-label="Undo last swipe"
-          title="Undo"
+          aria-label={tx.undo}
+          title={tx.undoShort}
         >
           <RotateCcw className="size-5" aria-hidden />
         </button>
@@ -140,8 +147,8 @@ export function SwipeDeck<T>({ cards, cardKey, render, onSwipe, onUndo, canUndo,
           onClick={() => fly("left")}
           disabled={!top || !!leaving}
           className="inline-flex size-16 cursor-pointer items-center justify-center rounded-full border-2 border-danger/40 bg-card text-danger shadow-card transition hover:scale-105 hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-40"
-          aria-label="Pass (left arrow key)"
-          title="Pass"
+          aria-label={tx.passKey}
+          title={tx.pass}
         >
           <X className="size-8" strokeWidth={2.5} aria-hidden />
         </button>
@@ -150,13 +157,13 @@ export function SwipeDeck<T>({ cards, cardKey, render, onSwipe, onUndo, canUndo,
           onClick={() => fly("right")}
           disabled={!top || !!leaving}
           className="inline-flex size-16 cursor-pointer items-center justify-center rounded-full bg-success text-success-fg shadow-card transition hover:scale-105 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
-          aria-label={`${likeLabel} (right arrow key)`}
+          aria-label={`${likeLabel} (${tx.rightKey})`}
           title={likeLabel}
         >
           <Heart className="size-8 fill-current" aria-hidden />
         </button>
       </div>
-      <p className="text-sm text-muted-fg">Drag the card or use the arrow keys ← →</p>
+      <p className="text-sm text-muted-fg">{tx.hint}</p>
     </div>
   );
 }

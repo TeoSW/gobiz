@@ -1,7 +1,11 @@
 import { Link } from "react-router-dom";
+import { texts, useTexts } from "../lib/i18n";
 import { ARROWS, BARS, LOGO_VIEWBOX, MARK_VIEWBOX, SKILL, SYNC } from "./logoPaths";
 
-export const SLOGAN = "Match făcut. Proiect început.";
+const T = texts({ slogan: "Match made. Project started.", home: "SkillSync home" }, { slogan: "Match făcut. Proiect început.", home: "SkillSync - pagina principală" });
+
+/** The slogan in the current language ("Match făcut. Proiect început." in Romanian). */
+export const useSlogan = () => useTexts(T).slogan;
 
 /** The two sync arrows with the growth bars. Colors follow the theme (see --logo-* tokens). */
 export function LogoMark({ className = "size-8" }: { className?: string }) {
@@ -25,8 +29,9 @@ export function LogoFull({ className = "h-8 w-auto" }: { className?: string }) {
 }
 
 export function Logo() {
+  const t = useTexts(T);
   return (
-    <Link to="/" className="flex shrink-0 items-center rounded-lg" aria-label="SkillSync home">
+    <Link to="/" className="flex shrink-0 items-center rounded-lg" aria-label={t.home}>
       <LogoFull className="h-6 w-auto sm:h-8" />
     </Link>
   );

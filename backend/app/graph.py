@@ -17,7 +17,8 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .models import Opportunity, Review, StudentSkill, User
-from .skills_catalog import SKILL_BY_ID, SKILLS, related_skills
+from .i18n import lang, tr
+from .skills_catalog import SKILL_BY_ID, SKILLS, related_skills, skill_label
 
 log = logging.getLogger(__name__)
 _driver = None
@@ -53,7 +54,7 @@ def _get_driver():
 def status() -> dict:
     uri = get_settings().neo4j_uri
     if not uri:
-        return {"enabled": False, "reachable": False, "detail": "NEO4J_URI not set (start compose with --profile graph)"}
+        return {"enabled": False, "reachable": False, "detail": tr("graph.disabled")}
     drv = _get_driver()
     if drv is None:
         return {"enabled": True, "reachable": False, "detail": _last_error}
@@ -144,7 +145,7 @@ def co_demand(db: Session, limit: int = 12) -> dict:
     for o in db.query(Opportunity).all():
         ids = sorted({r.skill_id for r in o.skills})
         counter.update(combinations(ids, 2))
-    pairs = [{"a": SKILL_BY_ID[a]["name"], "b": SKILL_BY_ID[b]["name"], "n": n} for (a, b), n in counter.most_common(limit)]
+    pairs = [{"a": skill_label(a, lang()), "b": skill_label(b, lang()), "n": n} for (a, b), n in counter.most_common(limit)]
     return {"source": "sql", "pairs": pairs}
 
 

@@ -2,6 +2,12 @@ import clsx from "clsx";
 import { AlertTriangle, Loader2, Star, X } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { initials } from "../lib/format";
+import { texts, useTexts } from "../lib/i18n";
+
+const T = texts(
+  { loading: "Loading", close: "Close dialog", outOf: (v: string, n: number) => `${v} out of ${n}`, stars: (n: number) => `${n} star${n > 1 ? "s" : ""}` },
+  { loading: "Se încarcă", close: "Închide fereastra", outOf: (v, n) => `${v} din ${n}`, stars: (n) => `${n} ${n > 1 ? "stele" : "stea"}` },
+);
 
 type Tone = "neutral" | "primary" | "accent" | "success" | "warning" | "danger";
 
@@ -23,11 +29,12 @@ export function Badge({ tone = "neutral", children, className, icon }: { tone?: 
   );
 }
 
-export function Spinner({ label = "Loading" }: { label?: string }) {
+export function Spinner({ label }: { label?: string }) {
+  const t = useTexts(T);
   return (
     <div role="status" className="flex items-center justify-center gap-2 py-12 text-sm text-muted-fg">
       <Loader2 className="size-5 animate-spin" aria-hidden />
-      {label}...
+      {label ?? t.loading}...
     </div>
   );
 }
@@ -146,8 +153,9 @@ export function ToggleChip({ checked, onChange, children }: { checked: boolean; 
 }
 
 export function Stars({ value, outOf = 5, size = 14 }: { value: number; outOf?: number; size?: number }) {
+  const t = useTexts(T);
   return (
-    <span className="inline-flex items-center gap-0.5" aria-label={`${value.toFixed(1)} out of ${outOf}`}>
+    <span className="inline-flex items-center gap-0.5" aria-label={t.outOf(value.toFixed(1), outOf)}>
       {Array.from({ length: outOf }, (_, i) => (
         <Star key={i} size={size} aria-hidden className={i < Math.round(value) ? "fill-amber-400 text-amber-400" : "text-border"} />
       ))}
@@ -156,10 +164,11 @@ export function Stars({ value, outOf = 5, size = 14 }: { value: number; outOf?: 
 }
 
 export function StarInput({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) {
+  const t = useTexts(T);
   return (
     <div role="radiogroup" aria-label={label} className="inline-flex gap-1">
       {[1, 2, 3, 4, 5].map((n) => (
-        <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n} star${n > 1 ? "s" : ""}`} onClick={() => onChange(n)} className="cursor-pointer rounded p-1">
+        <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={t.stars(n)} onClick={() => onChange(n)} className="cursor-pointer rounded p-1">
           <Star size={22} className={n <= value ? "fill-amber-400 text-amber-400" : "text-muted-fg"} aria-hidden />
         </button>
       ))}
@@ -168,6 +177,7 @@ export function StarInput({ value, onChange, label }: { value: number; onChange:
 }
 
 export function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+  const t = useTexts(T);
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -183,7 +193,7 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
     >
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <h2 className="text-lg font-bold">{title}</h2>
-        <button onClick={onClose} className="btn-ghost min-h-9 px-2" aria-label="Close dialog">
+        <button onClick={onClose} className="btn-ghost min-h-9 px-2" aria-label={t.close}>
           <X className="size-5" aria-hidden />
         </button>
       </div>

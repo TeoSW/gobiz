@@ -181,7 +181,7 @@ def seed(db, data: dict | None = None) -> None:
     data = data or DEMO_DATA
     accounts = data.get("accounts", {})
     for s in SKILLS:
-        db.add(Skill(**s))
+        db.add(Skill(**{k: v for k, v in s.items() if k != "name_ro"}))  # Romanian names live in the catalog
 
     users: dict[str, User] = {}
     for st in data["students"]:

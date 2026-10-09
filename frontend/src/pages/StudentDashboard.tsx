@@ -7,24 +7,91 @@ import { MatchCta } from "../components/MatchCta";
 import { OpportunityCard, StatusBadge, TypeBadge } from "../components/OpportunityCard";
 import { Badge, Empty, ErrorBox, SectionTitle, Skeleton, StatCard, Stars, Tabs } from "../components/ui";
 import { api, post } from "../lib/api";
-import { TYPE_PLURAL, shortDate } from "../lib/format";
+import { shortDate, useFormat } from "../lib/format";
+import { roPlural, texts, useTexts } from "../lib/i18n";
 import type { MyApplication, Opportunity, OppType, Student } from "../lib/types";
 
+const T = texts(
+  {
+    portfolio: "Your portfolio",
+    portfolioSub: "Projects finished on SkillSync and rated by the company",
+    noVerified: "No verified projects yet",
+    noVerifiedText: 'Complete your first project to turn "I know Power BI" into proof.',
+    completed: (n: number) => `${n} completed project${n > 1 ? "s" : ""}`,
+    rating: (r: string) => ` · rating ${r}/5`,
+    verified: "University Verified",
+    hi: (name: string) => `Hi, ${name}`,
+    dashboard: "Dashboard",
+    editProfile: "Edit my profile",
+    finished: "Finished projects",
+    yourRating: "Your rating",
+    fromReviews: (n: number) => `from ${n} review${n === 1 ? "" : "s"}`,
+    newInvites: "New invitations",
+    invitations: "Invitations",
+    invitationsSub: "Companies that would like to work with you",
+    accept: "Accept",
+    decline: "Decline",
+    currentWork: "Your current work",
+    recommended: "Recommended for you",
+    recommendedSub: "Best fits first. You can see all of them in Explore.",
+    recType: "Recommendation type",
+    noneCompatible: (types: string) => `No compatible ${types} right now`,
+    browseAll: "Browse all",
+    checkProfile: "Check that this type is selected in your profile interests, or add skills.",
+    appsTitle: "Applications and matches",
+    noApps: "No applications yet",
+    kind: { match: "matched", invitation: "invitation", application: "applied" } as Record<string, string>,
+    matchPct: (n: number) => `${n}% match`,
+  },
+  {
+    portfolio: "Portofoliul tău",
+    portfolioSub: "Proiecte terminate pe SkillSync și evaluate de companie",
+    noVerified: "Încă niciun proiect verificat",
+    noVerifiedText: "Termină primul proiect ca „știu Power BI” să devină o dovadă.",
+    completed: (n) => roPlural(n, "proiect finalizat", "proiecte finalizate"),
+    rating: (r) => ` · notă ${r}/5`,
+    verified: "Validat de universitate",
+    hi: (name) => `Salut, ${name}`,
+    dashboard: "Panou",
+    editProfile: "Editează profilul",
+    finished: "Proiecte terminate",
+    yourRating: "Nota ta",
+    fromReviews: (n) => `din ${roPlural(n, "recenzie", "recenzii")}`,
+    newInvites: "Invitații noi",
+    invitations: "Invitații",
+    invitationsSub: "Firme care ar vrea să lucreze cu tine",
+    accept: "Acceptă",
+    decline: "Refuză",
+    currentWork: "La ce lucrezi acum",
+    recommended: "Recomandate pentru tine",
+    recommendedSub: "Cele mai potrivite primele. Le vezi pe toate în Explorează.",
+    recType: "Tipul recomandărilor",
+    noneCompatible: (types) => `Nicio oportunitate compatibilă acum (${types})`,
+    browseAll: "Vezi tot",
+    checkProfile: "Verifică dacă tipul acesta e bifat la interese în profil sau adaugă abilități.",
+    appsTitle: "Aplicări și match-uri",
+    noApps: "Încă nicio aplicare",
+    kind: { match: "match", invitation: "invitație", application: "ai aplicat" },
+    matchPct: (n) => `potrivire ${n}%`,
+  },
+);
+
 export function PortfolioSummary({ s }: { s: Student }) {
+  const t = useTexts(T);
   const p = s.portfolio;
   return (
     <div className="card p-5">
-      <SectionTitle sub="Projects finished on SkillSync and rated by the company">Your portfolio</SectionTitle>
+      <SectionTitle sub={t.portfolioSub}>{t.portfolio}</SectionTitle>
       {p.completed === 0 ? (
-        <Empty icon={<Award className="size-8" />} title="No verified projects yet">
-          Complete your first project to turn "I know Power BI" into proof.
+        <Empty icon={<Award className="size-8" />} title={t.noVerified}>
+          {t.noVerifiedText}
         </Empty>
       ) : (
         <>
           <p className="text-lg font-bold">
-            {p.completed} completed project{p.completed > 1 ? "s" : ""}
+            {t.completed(p.completed)}
             {p.by_skill.slice(0, 3).map((b) => ` · ${b.count} ${b.name}`)}
-            {p.average_rating != null && ` · rating ${p.average_rating.toFixed(1)}/5`}
+            {p.average_rating != null && t.rating(p.average_rating.toFixed(1))}
           </p>
           <ul className="mt-4 divide-y divide-border">
             {p.items.map((i) => (
@@ -42,7 +109,7 @@ export function PortfolioSummary({ s }: { s: Student }) {
                         {sk}
                       </span>
                     ))}
-                    {i.university_verified && <Badge tone="primary" icon={<BadgeCheck className="size-3" aria-hidden />}>University Verified</Badge>}
+                    {i.university_verified && <Badge tone="primary" icon={<BadgeCheck className="size-3" aria-hidden />}>{t.verified}</Badge>}
                   </div>
                   {i.review && <p className="mt-1 text-sm italic text-muted-fg">"{i.review}"</p>}
                 </div>
@@ -61,6 +128,8 @@ export function PortfolioSummary({ s }: { s: Student }) {
 }
 
 export default function StudentDashboard() {
+  const t = useTexts(T);
+  const f = useFormat();
   const qc = useQueryClient();
   const [tab, setTab] = useState<OppType>("project");
   const me = useQuery({ queryKey: ["student-me"], queryFn: () => api<Student>("/students/me") });
@@ -80,18 +149,18 @@ export default function StudentDashboard() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold">{s ? `Hi, ${s.name.split(" ")[0]}` : "Dashboard"}</h1>
+          <h1 className="text-3xl font-extrabold">{s ? t.hi(s.name.split(" ")[0]) : t.dashboard}</h1>
           <p className="mt-1 text-muted-fg">{s?.headline}</p>
         </div>
         <Link to="/student/profile" className="btn-outline">
-          <UserPen className="size-4" aria-hidden /> Edit my profile
+          <UserPen className="size-4" aria-hidden /> {t.editProfile}
         </Link>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatCard icon={<Award className="size-5" />} label="Finished projects" value={s?.portfolio.completed ?? "-"} />
-        <StatCard icon={<Star className="size-5" />} label="Your rating" value={s?.ratings.average?.toFixed(1) ?? "-"} sub={s ? `from ${s.ratings.count} review${s.ratings.count === 1 ? "" : "s"}` : undefined} />
-        <StatCard icon={<Mail className="size-5" />} label="New invitations" value={apps.data ? invites.length : "-"} />
+        <StatCard icon={<Award className="size-5" />} label={t.finished} value={s?.portfolio.completed ?? "-"} />
+        <StatCard icon={<Star className="size-5" />} label={t.yourRating} value={s?.ratings.average?.toFixed(1) ?? "-"} sub={s ? t.fromReviews(s.ratings.count) : undefined} />
+        <StatCard icon={<Mail className="size-5" />} label={t.newInvites} value={apps.data ? invites.length : "-"} />
       </div>
 
       <MatchCta role="student" />
@@ -100,8 +169,8 @@ export default function StudentDashboard() {
 
       {invites.length > 0 && (
         <section className="card border-accent/40 p-5" aria-labelledby="inv-title">
-          <SectionTitle sub="Companies that would like to work with you">
-            <span id="inv-title">Invitations</span>
+          <SectionTitle sub={t.invitationsSub}>
+            <span id="inv-title">{t.invitations}</span>
           </SectionTitle>
           <ul className="divide-y divide-border">
             {invites.map((a) => (
@@ -120,10 +189,10 @@ export default function StudentDashboard() {
                 </div>
                 <div className="flex gap-2">
                   <button className="btn-primary min-h-9 px-3" onClick={() => respond.mutate({ id: a.id, action: "accept" })}>
-                    Accept
+                    {t.accept}
                   </button>
                   <button className="btn-outline min-h-9 px-3" onClick={() => respond.mutate({ id: a.id, action: "decline" })}>
-                    Decline
+                    {t.decline}
                   </button>
                 </div>
               </li>
@@ -136,7 +205,7 @@ export default function StudentDashboard() {
       {active.length > 0 && (
         <section aria-labelledby="active-title">
           <SectionTitle>
-            <span id="active-title">Your current work</span>
+            <span id="active-title">{t.currentWork}</span>
           </SectionTitle>
           <div className="grid gap-4 md:grid-cols-2">
             {active.map((a) => (
@@ -148,11 +217,11 @@ export default function StudentDashboard() {
 
       <section aria-labelledby="recs-title">
         <SectionTitle
-          sub="Best fits first. You can see all of them in Opportunities."
-          action={<Tabs label="Recommendation type" value={tab} onChange={setTab} tabs={(["project", "internship", "job"] as OppType[]).map((t) => ({ id: t, label: TYPE_PLURAL[t] }))} />}
+          sub={t.recommendedSub}
+          action={<Tabs label={t.recType} value={tab} onChange={setTab} tabs={(["project", "internship", "job"] as OppType[]).map((ty) => ({ id: ty, label: f.typesPlural[ty] }))} />}
         >
           <span id="recs-title" className="inline-flex items-center gap-2">
-            <Sparkles className="size-5 text-primary-strong" aria-hidden /> Recommended for you
+            <Sparkles className="size-5 text-primary-strong" aria-hidden /> {t.recommended}
           </span>
         </SectionTitle>
         <ErrorBox error={recs.error} />
@@ -169,8 +238,16 @@ export default function StudentDashboard() {
             ))}
           </div>
         ) : (
-          <Empty icon={<Sparkles className="size-8" />} title={`No compatible ${TYPE_PLURAL[tab].toLowerCase()} right now`} action={<Link className="btn-outline" to={`/explore?type=${tab}`}>Browse all</Link>}>
-            Check that this type is selected in your profile interests, or add skills.
+          <Empty
+            icon={<Sparkles className="size-8" />}
+            title={t.noneCompatible(f.typesPlural[tab].toLowerCase())}
+            action={
+              <Link className="btn-outline" to={`/explore?type=${tab}`}>
+                {t.browseAll}
+              </Link>
+            }
+          >
+            {t.checkProfile}
           </Empty>
         )}
       </section>
@@ -178,10 +255,10 @@ export default function StudentDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="card p-5" aria-labelledby="apps-title">
           <SectionTitle>
-            <span id="apps-title">Applications and matches</span>
+            <span id="apps-title">{t.appsTitle}</span>
           </SectionTitle>
           {pendingApps.length === 0 ? (
-            <Empty icon={<Inbox className="size-8" />} title="No applications yet" />
+            <Empty icon={<Inbox className="size-8" />} title={t.noApps} />
           ) : (
             <ul className="divide-y divide-border">
               {pendingApps.map((a) => (
@@ -191,12 +268,14 @@ export default function StudentDashboard() {
                       {a.opportunity.title}
                     </Link>
                     <p className="text-sm text-muted-fg">
-                      {a.opportunity.company.name} · {a.kind === "match" ? "matched" : a.kind === "invitation" ? "invitation" : "applied"} {shortDate(a.created_at)}
+                      {a.opportunity.company.name} · {t.kind[a.kind]} {shortDate(a.created_at)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {a.match_score != null && <Badge tone="primary">{Math.round(a.match_score)}% match</Badge>}
-                    <Badge tone={a.status === "accepted" ? "success" : a.status === "rejected" || a.status === "declined" ? "danger" : "neutral"}>{a.kind === "match" ? "match" : a.status}</Badge>
+                    {a.match_score != null && <Badge tone="primary">{t.matchPct(Math.round(a.match_score))}</Badge>}
+                    <Badge tone={a.status === "accepted" ? "success" : a.status === "rejected" || a.status === "declined" ? "danger" : "neutral"}>
+                      {a.kind === "match" ? f.appStatus.match : (f.appStatus[a.status] ?? a.status)}
+                    </Badge>
                     {a.opportunity.status !== "open" && <StatusBadge status={a.opportunity.status} />}
                   </div>
                 </li>

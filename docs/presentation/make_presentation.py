@@ -1,4 +1,5 @@
-"""Generate the SkillSync presentation: screenshots, a PDF deck and a 30-second demo video (no captions).
+"""Generate the SkillSync presentation: screenshots, a PDF deck and two demo videos without captions
+(30 s each: one in English, one in Romanian with the language switch and logging in and out of the three accounts).
 
 Requires the app running on http://localhost:8080 (docker compose up), Playwright (Apache-2.0) and
 imageio-ffmpeg (BSD-2, ships an LGPL/GPL ffmpeg build with libx264):
@@ -6,13 +7,15 @@ imageio-ffmpeg (BSD-2, ships an LGPL/GPL ffmpeg build with libx264):
     python -m playwright install chromium
     python docs/presentation/make_presentation.py
 
-Outputs (next to this file): screens/*.png, SkillSync-presentation.pdf, SkillSync-demo.mp4.
+Outputs (next to this file): screens/*.png, SkillSync-presentation.pdf, SkillSync-demo.mp4, SkillSync-demo-ro.mp4.
+Only one part: add "pdf", "video" or "video-ro". Another address: set SKILLSYNC_URL (e.g. http://localhost:5173).
 The demo data is reset before and after, so the run leaves the app as it was.
 """
 
 import asyncio
 import base64
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -25,7 +28,7 @@ import imageio_ffmpeg
 from playwright.async_api import async_playwright
 from playwright.sync_api import Page, sync_playwright
 
-BASE = "http://localhost:8080"
+BASE = os.environ.get("SKILLSYNC_URL", "http://localhost:8080").rstrip("/")
 OUT = Path(__file__).resolve().parent
 SHOTS = OUT / "screens"
 ROOT = OUT.parents[1]
@@ -35,6 +38,7 @@ FONT_EXT = ROOT / "frontend/node_modules/@fontsource-variable/plus-jakarta-sans/
 VIDEO_SECONDS = 30
 # the app is bilingual (RO/EN); the script clicks English labels, so it always records the English UI
 ENGLISH_UI = "try { localStorage.setItem('skillsync-lang', 'en'); } catch (e) {}"
+ROMANIAN_UI = "try { localStorage.setItem('skillsync-lang', 'ro'); } catch (e) {}"
 
 
 def api(path: str, body: dict | None = None) -> dict:
@@ -334,7 +338,8 @@ class Recorder:
     async def stop(self) -> None:
         await self.cdp.send("Page.stopScreencast")
 
-    def encode(self, target: Path, seconds: float) -> float:
+    def encode(self, target: Path, seconds: float | None) -> float:
+        """seconds: fit the video to this length (uniform speed change); None keeps real time."""
         tmp = OUT / "_video_tmp"
         shutil.rmtree(tmp, ignore_errors=True)
         tmp.mkdir()
@@ -347,10 +352,11 @@ class Recorder:
         lines.append(f"file '{len(self.frames) - 1:05d}.jpg'")  # concat demuxer: repeat the last file
         (tmp / "list.txt").write_text("\n".join(lines), encoding="utf-8")
         raw = t_end - self.frames[0][0]
-        speed = raw / seconds
+        speed = raw / seconds if seconds else 1.0
         subprocess.run([
             imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(tmp / "list.txt"),
-            "-vf", f"setpts=PTS/{speed:.5f},scale=1920:1080:flags=lanczos:in_range=full:out_range=limited,format=yuv420p,fps=30", "-t", str(seconds),
+            "-vf", f"setpts=PTS/{speed:.5f},scale=1920:1080:flags=lanczos:in_range=full:out_range=limited,format=yuv420p,fps=30",
+            "-t", str(seconds or raw),
             # modest memory use: the PC also runs Docker, the LLM and the browser
             "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-threads", "2", "-x264-params", "rc-lookahead=10",
             "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(target),
@@ -359,59 +365,88 @@ class Recorder:
         return raw
 
 
+class Director:
+    """Drives the page like a person: a visible pointer that glides, clicks, drags and types."""
+
+    def __init__(self, page, rec: Recorder, pace: float = 1.0):
+        self.page, self.rec = page, rec
+        self.pace = pace  # scales every movement and pause: 1.0 = calm, below 1 = brisk
+        self.x, self.y = 800.0, 450.0
+
+    async def hold(self, ms: int) -> None:
+        await self.page.wait_for_timeout(ms * self.pace)
+
+    async def move(self, x: float, y: float, ms: int = 550) -> None:
+        """Glide the pointer in real time (each step's round trip is part of the duration)."""
+        ms = max(120, ms * self.pace)
+        x0, y0 = self.x, self.y
+        t0 = time.monotonic()
+        while True:
+            k = min(1.0, (time.monotonic() - t0) * 1000 / ms)
+            e = k * k * (3 - 2 * k)  # ease in-out
+            await self.page.mouse.move(x0 + (x - x0) * e, y0 + (y - y0) * e)
+            if k >= 1:
+                break
+            await self.page.wait_for_timeout(8)
+        self.x, self.y = x, y
+
+    async def click(self, locator, ms: int = 550, after: int = 250) -> None:
+        await locator.scroll_into_view_if_needed()
+        box = await locator.bounding_box()
+        await self.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2, ms)
+        await self.page.mouse.down()
+        await self.page.wait_for_timeout(90)
+        await self.page.mouse.up()
+        await self.hold(after)
+
+    async def type_into(self, locator, text: str, delay: int = 75) -> None:
+        await self.click(locator, ms=450, after=120)
+        await self.page.keyboard.type(text, delay=delay * self.pace)
+
+    async def drag_card(self, dx: float, ms: int = 700) -> None:
+        card = self.page.locator("div.cursor-grab").first
+        box = await card.bounding_box()
+        x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] * 0.42
+        await self.move(x, y, 350)
+        await self.page.mouse.down()
+        await self.move(x + dx, y + 18, ms)
+        await self.hold(120)
+        await self.page.mouse.up()
+
+    async def wait_cut(self, selector: str, settle: int = 600, timeout: int = 180_000) -> None:
+        """Cut the waiting (page load, LLM) out of the video."""
+        self.rec.pause()
+        await self.page.wait_for_selector(selector, timeout=timeout)
+        await self.page.wait_for_timeout(settle)
+        self.rec.resume()
+
+    async def cut_to(self, url: str, ready: str, user: int | None = None, theme: str | None = None) -> None:
+        """Jump to another page or account without showing the loading."""
+        self.rec.pause()
+        if user is not None or theme is not None:
+            await self.page.evaluate(
+                "([u, t]) => { if (u) localStorage.setItem('skillsync-user', String(u)); if (t) localStorage.setItem('skillsync-theme', t); }",
+                [user, theme])
+        await self.page.goto(url)
+        await self.page.wait_for_selector(ready, timeout=180_000)
+        await self.page.wait_for_timeout(500)
+        self.rec.resume()
+
+
+async def _session(p, ui_language_script: str, pace: float = 1.0):
+    browser = await p.chromium.launch()
+    ctx = await browser.new_context(viewport={"width": 1600, "height": 900}, device_scale_factor=1.2)
+    await ctx.add_init_script(ui_language_script)
+    await ctx.add_init_script(CURSOR_JS)
+    page = await ctx.new_page()
+    rec = Recorder(await ctx.new_cdp_session(page))
+    return browser, page, rec, Director(page, rec, pace)
+
+
 async def record_video(user_ids: dict[str, int]) -> Path:
+    """30-second English demo, no captions."""
     async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        ctx = await browser.new_context(viewport={"width": 1600, "height": 900}, device_scale_factor=1.2)
-        await ctx.add_init_script(ENGLISH_UI)
-        await ctx.add_init_script(CURSOR_JS)
-        page = await ctx.new_page()
-        rec = Recorder(await ctx.new_cdp_session(page))
-        mouse = {"x": 800.0, "y": 450.0}
-
-        async def move(x: float, y: float, ms: int = 550) -> None:
-            """Glide the pointer in real time (each step's round trip is part of the duration)."""
-            x0, y0 = mouse["x"], mouse["y"]
-            t0 = time.monotonic()
-            while True:
-                k = min(1.0, (time.monotonic() - t0) * 1000 / ms)
-                e = k * k * (3 - 2 * k)  # ease in-out
-                await page.mouse.move(x0 + (x - x0) * e, y0 + (y - y0) * e)
-                if k >= 1:
-                    break
-                await page.wait_for_timeout(8)
-            mouse.update(x=x, y=y)
-
-        async def click(locator, ms: int = 550, after: int = 250) -> None:
-            await locator.scroll_into_view_if_needed()
-            box = await locator.bounding_box()
-            await move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2, ms)
-            await page.mouse.down()
-            await page.wait_for_timeout(90)
-            await page.mouse.up()
-            await page.wait_for_timeout(after)
-
-        async def drag_card(dx: float, ms: int = 700) -> None:
-            card = page.locator("div.cursor-grab").first
-            box = await card.bounding_box()
-            x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] * 0.42
-            await move(x, y, 350)
-            await page.mouse.down()
-            await move(x + dx, y + 18, ms)
-            await page.wait_for_timeout(120)
-            await page.mouse.up()
-
-        async def cut_to(url: str, ready: str, user: int | None = None, theme: str | None = None) -> None:
-            """Jump to another page or account without showing the loading."""
-            rec.pause()
-            if user is not None or theme is not None:
-                await page.evaluate("([u, t]) => { if (u) localStorage.setItem('skillsync-user', String(u)); if (t) localStorage.setItem('skillsync-theme', t); }",
-                                    [user, theme])
-            await page.goto(url)
-            await page.wait_for_selector(ready, timeout=180_000)
-            await page.wait_for_timeout(500)
-            rec.resume()
-
+        browser, page, rec, d = await _session(p, ENGLISH_UI)
         await page.goto(BASE)
         await page.wait_for_selector("text=How it works")
         await page.wait_for_timeout(800)
@@ -419,66 +454,57 @@ async def record_video(user_ids: dict[str, int]) -> Path:
 
         # 1. home: logo + slogan -> start matching -> login as the student
         await page.wait_for_timeout(1500)
-        await click(page.get_by_role("link", name="Start matching"))
+        await d.click(page.get_by_role("link", name="Start matching"))
         await page.get_by_role("button", name=re.compile("Log in as Test Student")).wait_for()
         await page.wait_for_timeout(200)
-        await click(page.get_by_role("button", name=re.compile("Log in as Test Student")), after=0)
-        rec.pause()
-        await page.wait_for_selector("text=Recommended for you")
-        await page.wait_for_timeout(700)
-        rec.resume()
+        await d.click(page.get_by_role("button", name=re.compile("Log in as Test Student")), after=0)
+        await d.wait_cut("text=Recommended for you", settle=700)
 
         # 2. student dashboard -> swipe deck -> right swipe on a company that already said yes -> match -> chat
         await page.wait_for_timeout(1000)
-        await click(page.get_by_text("Start swiping"), after=0)
-        rec.pause()
-        await page.get_by_role("button", name=re.compile("I'm interested")).wait_for()
-        await page.wait_for_timeout(600)
-        rec.resume()
+        await d.click(page.get_by_text("Start swiping"), after=0)
+        await d.wait_cut("role=button[name=/I'm interested/]")
         await page.wait_for_timeout(300)
-        await drag_card(300)
+        await d.drag_card(300)
         await page.wait_for_selector("#match-title")
         await page.wait_for_timeout(1800)
-        await click(page.get_by_role("button", name="Send message"), ms=550, after=0)
+        await d.click(page.get_by_role("button", name="Send message"), ms=550, after=0)
         await page.wait_for_selector("text=When can we talk?")
         await page.wait_for_timeout(1400)
 
         # 3. back to the deck: pass on one card, like another
-        await click(page.get_by_role("link", name="Match", exact=True), after=0)
+        await d.click(page.get_by_role("link", name="Match", exact=True), after=0)
         await page.get_by_role("button", name=re.compile("I'm interested")).wait_for()
         await page.wait_for_timeout(700)
-        await click(page.get_by_role("button", name=re.compile("^Pass")), ms=450, after=700)
-        await click(page.get_by_role("button", name=re.compile("I'm interested")), ms=400, after=800)
+        await d.click(page.get_by_role("button", name=re.compile("^Pass")), ms=450, after=700)
+        await d.click(page.get_by_role("button", name=re.compile("I'm interested")), ms=400, after=800)
 
         # 4. company: describe a problem, the local LLM extracts tasks and skills
-        await cut_to(f"{BASE}/company/new", "text=Fill with an example", user=user_ids["testsrl"])
-        await click(page.get_by_role("button", name="Fill with an example"), after=400)
-        await click(page.get_by_role("button", name="Analyze with AI"), after=0)
-        rec.pause()
-        await page.wait_for_selector("text=Extracted by", timeout=180_000)
-        await page.wait_for_timeout(400)
-        rec.resume()
+        await d.cut_to(f"{BASE}/company/new", "text=Fill with an example", user=user_ids["testsrl"])
+        await d.click(page.get_by_role("button", name="Fill with an example"), after=400)
+        await d.click(page.get_by_role("button", name="Analyze with AI"), after=0)
+        await d.wait_cut("text=Extracted by", settle=400)
         await page.wait_for_timeout(1100)
         await page.mouse.wheel(0, 380)
         await page.wait_for_timeout(1400)
 
         # 5. company swipes a student who applied -> match
-        await cut_to(f"{BASE}/match", "text=Students for")
+        await d.cut_to(f"{BASE}/match", "text=Students for")
         await page.wait_for_timeout(400)
-        await drag_card(300)
+        await d.drag_card(300)
         await page.wait_for_selector("#match-title")
         await page.wait_for_timeout(1800)
 
         # 6. professor: what companies ask for vs. what students know, then dark mode
-        await cut_to(f"{BASE}/university", "text=University insights", user=user_ids["testprofessor"])
+        await d.cut_to(f"{BASE}/university", "text=University insights", user=user_ids["testprofessor"])
         await page.wait_for_timeout(1500)
         await page.mouse.wheel(0, 520)
         await page.wait_for_timeout(1200)
-        await click(page.get_by_role("button", name="Switch to dark theme"), ms=500, after=1100)
+        await d.click(page.get_by_role("button", name="Switch to dark theme"), ms=500, after=1100)
 
         # 7. end on the logo and the slogan
-        await cut_to(BASE, "text=How it works", user=user_ids["testprofessor"], theme="dark")
-        await move(1500, 860, 500)
+        await d.cut_to(BASE, "text=How it works", user=user_ids["testprofessor"], theme="dark")
+        await d.move(1500, 860, 500)
         await page.wait_for_timeout(2000)
 
         await rec.stop()
@@ -490,12 +516,99 @@ async def record_video(user_ids: dict[str, int]) -> Path:
     return target
 
 
+async def record_video_ro(seconds: float = 30) -> Path:
+    """Romanian demo (30 s, no captions): the language switch, then logging in and out of the three test accounts."""
+    async with async_playwright() as p:
+        browser, page, rec, d = await _session(p, ROMANIAN_UI, pace=0.62)
+        banner = page.get_by_role("banner")
+
+        async def log_in(username: str, ready: str) -> None:
+            await page.get_by_label("Utilizator", exact=True).wait_for()
+            await d.hold(250)
+            await d.type_into(page.get_by_label("Utilizator", exact=True), username, delay=60)
+            await d.type_into(page.get_by_label("Parolă", exact=True), "test123", delay=60)
+            await d.click(page.locator("form").get_by_role("button", name="Intră în cont"), after=0)
+            await d.wait_cut(ready, settle=500)
+
+        async def log_out() -> None:
+            await d.click(banner.get_by_role("button", name="Ieși din cont"), after=0)
+            await page.get_by_label("Utilizator", exact=True).wait_for()
+            await d.hold(300)
+
+        await page.goto(BASE)
+        await page.wait_for_selector("text=Cum funcționează")
+        await page.wait_for_timeout(800)
+        await rec.start()
+
+        # 1. the site in Romanian, switch to English and back
+        await d.hold(1300)
+        await d.click(banner.get_by_role("button", name="English"), after=0)
+        await page.wait_for_selector("text=How it works")
+        await d.hold(1500)
+        await d.click(banner.get_by_role("button", name="Română"), after=0)
+        await page.wait_for_selector("text=Cum funcționează")
+        await d.hold(700)
+
+        # 2. student: log in by typing, swipe right on a company that already said yes -> "E match!", log out
+        await d.click(banner.get_by_role("link", name="Intră în cont"), after=0)
+        await log_in("teststudent", "text=Recomandate pentru tine")
+        await d.hold(900)
+        await d.click(page.get_by_text("Începe swipe-ul"), after=0)
+        await d.wait_cut("role=button[name=/Mă interesează/]", settle=400)
+        await d.drag_card(300)
+        await page.wait_for_selector("#match-title")
+        await d.hold(2000)
+        await d.click(page.get_by_role("button", name="Continuă swipe-ul"), after=150)
+        await log_out()
+
+        # 3. company: log in, the local AI reads a Romanian description, swipe right on an applicant, log out
+        await log_in("testsrl", "text=Oportunitățile tale")
+        await d.hold(700)
+        await d.click(banner.get_by_role("link", name="Publică", exact=True), after=0)
+        await page.get_by_role("button", name="Completează cu un exemplu").wait_for()
+        await d.hold(300)
+        await d.click(page.get_by_role("button", name="Completează cu un exemplu"), after=450)
+        await d.click(page.get_by_role("button", name="Analizează cu AI"), after=0)
+        await d.wait_cut("text=Extras de", settle=300)
+        await d.hold(1300)
+        await page.mouse.wheel(0, 380)
+        await d.hold(1300)
+        await d.click(banner.get_by_role("link", name="Match", exact=True), after=0)
+        await page.get_by_role("button", name=re.compile("Ne interesează studentul")).wait_for()
+        await d.hold(500)
+        await d.drag_card(300)
+        await page.wait_for_selector("#match-title")
+        await d.hold(1800)
+        await d.click(page.get_by_role("button", name="Continuă swipe-ul"), after=150)
+        await log_out()
+
+        # 4. professor: log in, statistics, dark mode, log out, end on the slogan
+        await log_in("testprofessor", "text=Statistici pentru universitate")
+        await d.hold(1200)
+        await page.mouse.wheel(0, 520)
+        await d.hold(900)
+        await d.click(banner.get_by_role("button", name="Treci la tema întunecată"), after=600)
+        await log_out()
+        await d.click(banner.get_by_role("link", name=re.compile("SkillSync")), after=0)
+        await page.wait_for_selector("text=Cum funcționează")
+        await d.move(1500, 860, 500)
+        await d.hold(2400)
+
+        await rec.stop()
+        await browser.close()
+
+    target = OUT / "SkillSync-demo-ro.mp4"
+    raw = rec.encode(target, seconds)
+    print(f"Recorded {raw:.1f} s, encoded to {seconds} s ({raw / seconds:.2f}x).")
+    return target
+
+
 def main() -> None:
     try:
         urllib.request.urlopen(f"{BASE}/api/health", timeout=5)
     except Exception:  # noqa: BLE001
-        sys.exit(f"The app is not running on {BASE}. Start it with: docker compose up")
-    only = set(sys.argv[1:])  # optional: "pdf" or "video"
+        sys.exit(f"The app is not running on {BASE}. Start it with: docker compose up (or set SKILLSYNC_URL)")
+    only = set(sys.argv[1:])  # optional: "pdf", "video" (English, 30 s) or "video-ro" (Romanian)
     reset_demo()
     if not only or "pdf" in only:
         with sync_playwright() as p:
@@ -507,6 +620,9 @@ def main() -> None:
     if not only or "video" in only:
         users = {u: api("/auth/login", {"username": u, "password": "test123"})["id"] for u in ("testsrl", "testprofessor")}
         print("Video:", asyncio.run(record_video(users)))
+        reset_demo()
+    if not only or "video-ro" in only:
+        print("Video (RO):", asyncio.run(record_video_ro()))
         reset_demo()
 
 

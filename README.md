@@ -24,7 +24,8 @@ Company describes a problem -> LLM extracts tasks + skills -> company confirms
 
 - [Slides (PDF, 18 pages)](docs/presentation/SkillSync-presentation.pdf)
 - [Demo video (30 s, MP4, no captions)](docs/presentation/SkillSync-demo.mp4): student swipe and match, chat, the local AI reading a company's text, the company swiping, the professor's insights, dark mode
-- Both are generated from the running app by [docs/presentation/make_presentation.py](docs/presentation/make_presentation.py) (Playwright + ffmpeg, open source)
+- [Demo video in Romanian (30 s, MP4, no captions)](docs/presentation/SkillSync-demo-ro.mp4): the RO / EN switch, then logging in (typing the test account) and out of all three accounts: the student's swipe match, the company's AI extraction in Romanian (qwen3:1.7b on the GPU) and its swipe match, the professor's statistics and dark mode
+- All are generated from the running app by [docs/presentation/make_presentation.py](docs/presentation/make_presentation.py) (Playwright + ffmpeg, open source): `python docs/presentation/make_presentation.py [pdf] [video] [video-ro]`
 - Brand: [logo (light)](docs/brand/skillsync-logo.svg), [logo (dark)](docs/brand/skillsync-logo-dark.svg), [mark](docs/brand/skillsync-mark.svg), traced to SVG from the original [PNG](docs/brand/skillsync-logo-original@2x.png)
 
 ## Contents
